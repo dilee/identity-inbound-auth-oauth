@@ -450,7 +450,6 @@ public class OAuthAppDAO {
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(14));
                                 oauthApp.setPublicClient(!"0".equals(rSet.getString(15)));
-                                log.info("ResultSet: " + rSet.toString());
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(9));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(10));
@@ -506,8 +505,8 @@ public class OAuthAppDAO {
                     prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
                     prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
-                    prepStmt.setString(10, oauthAppDO.isPublicClient() ? "1" : "0");
-                    prepStmt.setString(8, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+                    prepStmt.setString(8, oauthAppDO.isPublicClient() ? "1" : "0");
+                    prepStmt.setString(9, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 }
                 int count = prepStmt.executeUpdate();
                 updateScopeValidators(connection, oauthAppDO.getId(), oauthAppDO.getScopeValidators());
