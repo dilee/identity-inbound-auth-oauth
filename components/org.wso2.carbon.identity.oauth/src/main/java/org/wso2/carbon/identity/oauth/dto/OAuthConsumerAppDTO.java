@@ -42,6 +42,7 @@ public class OAuthConsumerAppDTO {
     private String idTokenEncryptionMethod;
     private String backChannelLogoutUrl;
     private long idTokenExpiryTime;
+    private boolean publicClient;
 
     public long getUserAccessTokenExpiryTime() {
         return userAccessTokenExpiryTime;
@@ -216,6 +217,14 @@ public class OAuthConsumerAppDTO {
     public void setIdTokenExpiryTime(long idTokenExpiryTime) {
 
         this.idTokenExpiryTime = idTokenExpiryTime;
+    }
+
+    public boolean getPublicClient() {
+        return publicClient;
+    }
+
+    public void setPublicClient(boolean publicClient) {
+        this.publicClient = publicClient;
     }
 }
 

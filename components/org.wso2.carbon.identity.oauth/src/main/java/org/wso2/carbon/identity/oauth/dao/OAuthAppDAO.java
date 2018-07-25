@@ -120,6 +120,7 @@ public class OAuthAppDAO {
                         prepStmt.setLong(13, consumerAppDO.getApplicationAccessTokenExpiryTime());
                         prepStmt.setLong(14, consumerAppDO.getRefreshTokenExpiryTime());
                         prepStmt.setLong(15, consumerAppDO.getIdTokenExpiryTime());
+                        prepStmt.setString(16, consumerAppDO.isPublicClient() ? "1" : "0");
                         prepStmt.execute();
                         try (ResultSet results = prepStmt.getGeneratedKeys()) {
                             if (results.next()) {
@@ -144,6 +145,7 @@ public class OAuthAppDAO {
                         prepStmt.setLong(11, consumerAppDO.getApplicationAccessTokenExpiryTime());
                         prepStmt.setLong(12, consumerAppDO.getRefreshTokenExpiryTime());
                         prepStmt.setLong(13, consumerAppDO.getIdTokenExpiryTime());
+                        prepStmt.setString(14, consumerAppDO.isPublicClient() ? "1" : "0");
                         prepStmt.execute();
                         try (ResultSet results = prepStmt.getGeneratedKeys()) {
                             if (results.next()) {
@@ -278,11 +280,13 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(14));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(15));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(16));
+                                oauthApp.setPublicClient(!"0".equals(rSet.getString(17)));
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(11));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(12));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(14));
+                                oauthApp.setPublicClient(!"0".equals(rSet.getString(15)));
                             }
 
                             oauthApp.setUser(authenticatedUser);
@@ -360,12 +364,14 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(14));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(15));
-                                oauthApp.setState(rSet.getString(16));
+                                oauthApp.setPublicClient(!"0".equals(rSet.getString(16)));
+                                oauthApp.setState(rSet.getString(17));
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(10));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(11));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(12));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(13));
+                                oauthApp.setPublicClient(!"0".equals(rSet.getString(14)));
                                 oauthApp.setState(rSet.getString(14));
                             }
 
@@ -443,12 +449,14 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(12));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(14));
-
+                                oauthApp.setPublicClient(!"0".equals(rSet.getString(15)));
+                                log.info("ResultSet: " + rSet.toString());
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(9));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(10));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(11));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(12));
+                                oauthApp.setPublicClient(!"0".equals(rSet.getString(13)));
                             }
 
                             String spTenantDomain = user.getTenantDomain();
@@ -490,13 +498,15 @@ public class OAuthAppDAO {
                     prepStmt.setLong(7, oauthAppDO.getApplicationAccessTokenExpiryTime());
                     prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(9, oauthAppDO.getIdTokenExpiryTime());
+                    prepStmt.setString(10, oauthAppDO.isPublicClient() ? "1" : "0");
 
-                    prepStmt.setString(10, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+                    prepStmt.setString(11, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 } else {
                     prepStmt.setLong(4, oauthAppDO.getUserAccessTokenExpiryTime());
                     prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
                     prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
+                    prepStmt.setString(10, oauthAppDO.isPublicClient() ? "1" : "0");
                     prepStmt.setString(8, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 }
                 int count = prepStmt.executeUpdate();

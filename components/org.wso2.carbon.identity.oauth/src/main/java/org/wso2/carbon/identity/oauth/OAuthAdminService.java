@@ -137,6 +137,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setUsername(app.getUser().toString());
                 dto.setPkceMandatory(app.isPkceMandatory());
                 dto.setPkceSupportPlain(app.isPkceSupportPlain());
+                dto.setPublicClient(app.getPublicClient());
                 dto.setUserAccessTokenExpiryTime(app.getUserAccessTokenExpiryTime());
                 dto.setApplicationAccessTokenExpiryTime(app.getApplicationAccessTokenExpiryTime());
                 dto.setRefreshTokenExpiryTime(app.getRefreshTokenExpiryTime());
@@ -176,6 +177,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setScopeValidators(app.getScopeValidators());
                 dto.setPkceMandatory(app.isPkceMandatory());
                 dto.setPkceSupportPlain(app.isPkceSupportPlain());
+                dto.setPublicClient(app.getPublicClient());
                 dto.setUserAccessTokenExpiryTime(app.getUserAccessTokenExpiryTime());
                 dto.setApplicationAccessTokenExpiryTime(app.getApplicationAccessTokenExpiryTime());
                 dto.setRefreshTokenExpiryTime(app.getRefreshTokenExpiryTime());
@@ -220,6 +222,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setScopeValidators(app.getScopeValidators());
                 dto.setPkceMandatory(app.isPkceMandatory());
                 dto.setPkceSupportPlain(app.isPkceSupportPlain());
+                dto.setPublicClient(app.getPublicClient());
                 dto.setUserAccessTokenExpiryTime(app.getUserAccessTokenExpiryTime());
                 dto.setApplicationAccessTokenExpiryTime(app.getApplicationAccessTokenExpiryTime());
                 dto.setRefreshTokenExpiryTime(app.getRefreshTokenExpiryTime());
@@ -329,6 +332,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     app.setApplicationAccessTokenExpiryTime(application.getApplicationAccessTokenExpiryTime());
                     app.setRefreshTokenExpiryTime(application.getRefreshTokenExpiryTime());
                     app.setIdTokenExpiryTime(application.getIdTokenExpiryTime());
+                    app.setPublicClient(application.getPublicClient());
 
                     // Set OIDC Config Properties.
                     app.setRequestObjectSignatureValidationEnabled(application
@@ -691,6 +695,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                 appDTO.setScopeValidators(appDO.getScopeValidators());
                                 appDTO.setPkceMandatory(appDO.isPkceMandatory());
                                 appDTO.setPkceSupportPlain(appDO.isPkceSupportPlain());
+                                appDTO.setPublicClient(appDO.getPublicClient());
                                 appDTO.setUserAccessTokenExpiryTime(appDO.getUserAccessTokenExpiryTime());
                                 appDTO.setApplicationAccessTokenExpiryTime(appDO.getApplicationAccessTokenExpiryTime());
                                 appDTO.setRefreshTokenExpiryTime(appDO.getRefreshTokenExpiryTime());

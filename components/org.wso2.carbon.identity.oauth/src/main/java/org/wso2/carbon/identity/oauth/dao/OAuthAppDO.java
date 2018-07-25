@@ -42,6 +42,7 @@ public class OAuthAppDO implements Serializable {
     private long refreshTokenExpiryTime;
     private long idTokenExpiryTime;
     private String[] audiences = new String[0];
+    private boolean publicClient;
     // OIDC related properties.
     private boolean requestObjectSignatureValidationEnabled;
     private boolean idTokenEncryptionEnabled;
@@ -225,5 +226,17 @@ public class OAuthAppDO implements Serializable {
     public void setIdTokenExpiryTime(long idTokenExpiryTime) {
 
         this.idTokenExpiryTime = idTokenExpiryTime;
+    }
+
+    public boolean getPublicClient() {
+        return publicClient;
+    }
+
+    public void setPublicClient(boolean publicClient) {
+        this.publicClient = publicClient;
+    }
+
+    public boolean isPublicClient() {
+        return this.publicClient;
     }
 }
