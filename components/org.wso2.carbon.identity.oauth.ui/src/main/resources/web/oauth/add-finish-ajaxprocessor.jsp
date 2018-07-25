@@ -60,7 +60,6 @@
 
 	boolean pkceMandatory = false;
 	boolean pkceSupportPlain = false;
-
 	boolean publicClient = false;
 
 

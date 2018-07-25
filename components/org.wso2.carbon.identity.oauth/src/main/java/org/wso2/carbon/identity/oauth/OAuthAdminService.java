@@ -326,6 +326,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     app.setAudiences(application.getAudiences());
                     app.setPkceMandatory(application.getPkceMandatory());
                     app.setPkceSupportPlain(application.getPkceSupportPlain());
+                    app.setPublicClient(application.getPublicClient());
                     // Validate access token expiry configurations.
                     validateTokenExpiryConfigurations(application);
                     app.setUserAccessTokenExpiryTime(application.getUserAccessTokenExpiryTime());
@@ -441,6 +442,7 @@ public class OAuthAdminService extends AbstractAdmin {
         oauthappdo.setApplicationName(consumerAppDTO.getApplicationName());
         oauthappdo.setPkceMandatory(consumerAppDTO.getPkceMandatory());
         oauthappdo.setPkceSupportPlain(consumerAppDTO.getPkceSupportPlain());
+        oauthappdo.setPublicClient(consumerAppDTO.getPublicClient());
         // Validate access token expiry configurations.
         validateTokenExpiryConfigurations(consumerAppDTO);
         oauthappdo.setUserAccessTokenExpiryTime(consumerAppDTO.getUserAccessTokenExpiryTime());

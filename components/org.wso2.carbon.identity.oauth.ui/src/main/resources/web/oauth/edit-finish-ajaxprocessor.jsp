@@ -72,7 +72,7 @@
         pkceSupportPlain = true;
     }
 
-    if (request.getParameter("public_key") != null) {
+    if (request.getParameter("public_client") != null) {
         publicClient = true;
     }
     
@@ -152,7 +152,7 @@
                 app.setIdTokenEncryptionAlgorithm(idTokenEncryptionAlgorithm);
                 app.setIdTokenEncryptionMethod(idTokenEncryptionMethod);
             }
-            
+
             client.updateOAuthApplicationData(app);
             String message = resourceBundle.getString("app.updated.successfully");
             CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.INFO, request);
