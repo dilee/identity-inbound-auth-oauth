@@ -201,6 +201,8 @@ public class SQLQueries {
                 "REQUEST_TOKEN=?) AS REQUEST_TOKEN_TABLE_SELECTED ON IDN_OAUTH_CONSUMER_APPS.ID = " +
                 "REQUEST_TOKEN_TABLE_SELECTED.CONSUMER_KEY_ID";
 
+        public static final String GET_PUBLIC_CLIENT_STATUS = "SELECT PUBLIC_CLIENT FROM IDN_OAUTH_CONSUMER_APPS WHERE CONSUMER_KEY=?";
+
         // Get the username corresponding to the given consumer key and secret
         public static final String GET_USERNAME_FOR_KEY_AND_SECRET = "SELECT USERNAME FROM IDN_OAUTH_CONSUMER_APPS WHERE CONSUMER_KEY=? AND CONSUMER_SECRET=?";
 
