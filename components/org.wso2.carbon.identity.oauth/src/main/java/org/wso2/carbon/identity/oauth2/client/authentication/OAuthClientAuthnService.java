@@ -124,8 +124,14 @@ public class OAuthClientAuthnService {
         if (oAuthClientAuthnContext.isMultipleAuthenticatorsEngaged()) {
 
             if (log.isDebugEnabled()) {
-                log.debug(oAuthClientAuthnContext.getExecutedAuthenticators().size() + " Authenticators were " +
-                        "executed previously. Hence failing client authentication");
+                String executedAuthenticators = "";
+                List<String> executedAuthenticatorList = oAuthClientAuthnContext.getExecutedAuthenticators();
+                for (int i = 0; i < executedAuthenticatorList.size(); i++) {
+                    executedAuthenticators += executedAuthenticatorList.get(i) + ", ";
+                }
+                log.debug(oAuthClientAuthnContext.getExecutedAuthenticators().size() + " Authenticators:" +
+                        executedAuthenticators + " were " + "executed previously. Hence failing client " +
+                        "authentication.");
             }
             setErrorToContext(OAuth2ErrorCodes.INVALID_REQUEST, "The client MUST NOT use more than one " +
                     "authentication method in each", oAuthClientAuthnContext);

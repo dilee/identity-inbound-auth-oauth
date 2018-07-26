@@ -450,8 +450,8 @@ public class OAuthConsumerDAO {
             prepStmt.setString(1, consumerKey);
             resultSet = prepStmt.executeQuery();
 
-            if (resultSet != null) {
-                return true;
+            if (resultSet.next()) {
+                return resultSet.getString(1).equals("1");
             }
             connection.commit();
         } catch (SQLException e) {

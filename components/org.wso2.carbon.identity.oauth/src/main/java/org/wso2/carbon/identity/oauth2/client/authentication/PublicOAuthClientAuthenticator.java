@@ -18,20 +18,15 @@
 
 package org.wso2.carbon.identity.oauth2.client.authentication;
 
-import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.axis2.transport.http.HTTPConstants;
-import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
-import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
-import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
-import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.bean.OAuthClientAuthnContext;
-import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -39,16 +34,12 @@ import java.util.Map;
 
 /**
  * This class is dedicated for authenticating 'Public Clients'. Public clients do not need a client secret to be
- * validated. This type of authentication is regularly utilised by native OAuth clients.
+ * validated. This type of authentication is regularly utilised by native OAuth2 clients.
  */
 public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthenticator {
 
-
     private static Log log = LogFactory.getLog(PublicOAuthClientAuthenticator.class);
-    private static String CREDENTIAL_SEPARATOR = ":";
     private static String SIMPLE_CASE_AUTHORIZATION_HEADER = "authorization";
-    private static String BASIC_PREFIX = "Basic";
-    private static int CREDENTIAL_LENGTH = 1;
 
     /**
      * Returns the execution order of this authenticator
@@ -62,6 +53,8 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
     }
 
     /**
+     * Authenticates the client.
+     *
      * @param request                 HttpServletRequest which is the incoming request.
      * @param bodyParams              Body parameter map of the request.
      * @param oAuthClientAuthnContext OAuth client authentication context.
@@ -70,8 +63,7 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
      */
     @Override
     public boolean authenticateClient(HttpServletRequest request, Map<String, List> bodyParams, OAuthClientAuthnContext
-            oAuthClientAuthnContext) throws OAuthClientAuthnException {
-
+            oAuthClientAuthnContext) {
         return true;
     }
 
@@ -90,14 +82,34 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
 
         OAuthConsumerDAO oAuthConsumerDAO = new OAuthConsumerDAO();
 
+        if (isAuthorizationHeaderExists(request)) {
+            return false;
+        }
+
         try {
-            if (isClientIdExistsAsParams(bodyParams) && oAuthConsumerDAO.getPublicClientStatusOfApp(context.
-                    getClientId())) {
-                return true;
+            context.setClientId(getClientId(request, bodyParams, context));
+
+            if (isClientIdExistsAsParams(bodyParams)) {
+                if (oAuthConsumerDAO.getPublicClientStatusOfApp(context.getClientId())) {
+                    return true;
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Client is not public.");
+                    }
+                    return false;
+                }
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("Client ID could not be retrieved.");
+                }
             }
         } catch (IdentityOAuthAdminException e) {
             if (log.isDebugEnabled()) {
                 log.debug("Public client status could not be retrieved.");
+            }
+        } catch (OAuthClientAuthnException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Client ID could not be retrieved.");
             }
         }
         if (log.isDebugEnabled()) {
@@ -119,7 +131,7 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
     }
 
     /**
-     * Retrives the client ID which is extracted from incoming request.
+     * Retrieves the client ID which is extracted from incoming request.
      *
      * @param request                 HttpServletRequest.
      * @param bodyParams              Body paarameter map of the incoming request.
@@ -135,11 +147,45 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
         return oAuthClientAuthnContext.getClientId();
     }
 
+    /**
+     * Checks for an authorization header.
+     *
+     * @param request HttpServletRequest.
+     * @return True if auth header exists, false otherwise.
+     */
+    protected boolean isAuthorizationHeaderExists(HttpServletRequest request) {
+        String authorizationHeader = getAuthorizationHeader(request);
+        if (StringUtils.isNotEmpty(authorizationHeader)) {
+            return true;
+        }
+        return false;
+    }
 
+    /**
+     * Checks for the client ID in body parameters.
+     *
+     * @param contentParam Request body parameters.
+     * @return True if client ID exists as a body parameter, false otherwise.
+     */
     protected boolean isClientIdExistsAsParams(Map<String, List> contentParam) {
 
         Map<String, String> stringContent = getBodyParameters(contentParam);
         return (StringUtils.isNotEmpty(stringContent.get(OAuth.OAUTH_CLIENT_ID)));
+    }
+
+    /**
+     * Retrieves the authorization header from the request.
+     *
+     * @param request HttpServletRequest.
+     * @return Authorization header of the request.
+     */
+    protected String getAuthorizationHeader(HttpServletRequest request) {
+
+        String authorizationHeader = request.getHeader(HTTPConstants.HEADER_AUTHORIZATION);
+        if (StringUtils.isEmpty(authorizationHeader)) {
+            authorizationHeader = request.getHeader(SIMPLE_CASE_AUTHORIZATION_HEADER);
+        }
+        return authorizationHeader;
     }
 
     /**
