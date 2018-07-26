@@ -64,6 +64,7 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
     @Override
     public boolean authenticateClient(HttpServletRequest request, Map<String, List> bodyParams, OAuthClientAuthnContext
             oAuthClientAuthnContext) {
+        
         return true;
     }
 
