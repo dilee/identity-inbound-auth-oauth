@@ -18,12 +18,15 @@
 
 package org.wso2.carbon.identity.oauth2.client.authentication;
 
+import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.axis2.transport.http.HTTPConstants;
+import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
+import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth2.bean.OAuthClientAuthnContext;
 
@@ -40,6 +43,8 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
 
     private static Log log = LogFactory.getLog(PublicOAuthClientAuthenticator.class);
     private static String SIMPLE_CASE_AUTHORIZATION_HEADER = "authorization";
+    private static String CREDENTIAL_SEPARATOR = ":";
+    private static int CREDENTIAL_LENGTH = 2;
 
     /**
      * Returns the execution order of this authenticator
@@ -84,7 +89,11 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
         OAuthConsumerDAO oAuthConsumerDAO = new OAuthConsumerDAO();
 
         if (isAuthorizationHeaderExists(request)) {
-            return false;
+            if (isClientSecretExists(getAuthorizationHeader(request))) {
+                return false;
+            } else {
+                setClientIdFromHeader(request, context);
+            }
         }
 
         try {
@@ -175,6 +184,48 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
     }
 
     /**
+     * Checks if the client secret exists in the header.
+     *
+     * @param authorizationHeader Authorization header.
+     * @return True if the client secret exists, false otherwise.
+     */
+    protected boolean isClientSecretExists(String authorizationHeader) {
+        try {
+            if (extractCredentialsFromAuthzHeader(authorizationHeader).length == CREDENTIAL_LENGTH) {
+                return true;
+            }
+        } catch (OAuthClientAuthnException e) {
+            if (log.isDebugEnabled()) {
+                log.error("Could not extract client credentials from header.");
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Extracts client id and secret from Authorization header.
+     *
+     * @param authorizationHeader     Authroization header.
+     * @return An array which has client id as the first element and secret as the second element.
+     * @throws OAuthClientAuthnException
+     */
+    protected static String[] extractCredentialsFromAuthzHeader(String authorizationHeader) throws OAuthClientAuthnException {
+
+        String[] splitValues = authorizationHeader.trim().split(" ");
+        if (splitValues.length == CREDENTIAL_LENGTH) {
+            byte[] decodedBytes = Base64Utils.decode(splitValues[1].trim());
+            String userNamePassword = new String(decodedBytes, Charsets.UTF_8);
+            String[] credentials = userNamePassword.split(CREDENTIAL_SEPARATOR);
+            if (credentials.length == CREDENTIAL_LENGTH) {
+                return credentials;
+            }
+        }
+        String errMsg = "Error decoding authorization header. Space delimited \"<authMethod> <base64Hash>\" format " +
+                "violated.";
+        throw new OAuthClientAuthnException(errMsg, OAuth2ErrorCodes.INVALID_REQUEST);
+    }
+
+    /**
      * Retrieves the authorization header from the request.
      *
      * @param request HttpServletRequest.
@@ -190,16 +241,33 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
     }
 
     /**
-     * Sets client id to the OAuth client authentication context.
+     * Sets client id from body parameters to the OAuth client authentication context.
      *
-     * @param bodyParams Body parameters of the incoming request.
+     * @param params Body parameters of the incoming request.
      * @param context      OAuth client authentication context.
      */
-    protected void setClientCredentialsFromParam(Map<String, List> bodyParams, OAuthClientAuthnContext context) {
+    protected void setClientCredentialsFromParam(Map<String, List> params, OAuthClientAuthnContext context) {
 
-        Map<String, String> stringContent = getBodyParameters(bodyParams);
+        Map<String, String> stringContent = getBodyParameters(params);
         context.setClientId(stringContent.get(OAuth.OAUTH_CLIENT_ID));
+    }
 
+    /**
+     * Sets client id from header to the OAuth client authentication context.
+     *
+     * @param request HttpServletRequest.
+     * @param context OAuth client authentication context.
+     */
+    protected void setClientIdFromHeader(HttpServletRequest request, OAuthClientAuthnContext context) {
+        String[] credentials = new String[0];
+        try {
+            credentials = extractCredentialsFromAuthzHeader(getAuthorizationHeader(request));
+        } catch (OAuthClientAuthnException e) {
+            if (log.isDebugEnabled()) {
+                log.error("Could not extract client credentials from header.");
+            }
+        }
+        context.setClientId(credentials[0]);
     }
 
 }
