@@ -553,16 +553,10 @@
                                 </tr>
                                 <% } %>
                                 <% } %>
-                                <tr id="public_client">
-                                    <td colspan="2">
-                                        <label>
-                                            <input type="checkbox" name="public_client" value="yes" <%=(app.getPublicClient() ? "checked" : "")%>>
-                                            <fmt:message key='publicclient.support.plain'/>
-                                        </label>
-                                        <div class="sectionHelp">
-                                            <fmt:message key='publicclient.support.plain.hint'/>
-                                        </div>
-                                    </td>
+                                <tr>
+                                    <td class="leftCol-med"><fmt:message key='oauth.clienttype'/><span class="required">*</span> </td>
+                                    <td><input id="clientTypeConfidential" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.CONFIDENTIAL%>" <%=(app.getClientType() == OAuthConstants.OAuthClientType.CONFIDENTIAL ? "checked" : "")%> />Confidential
+                                        <input id="clientTypePublic" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.PUBLIC%>" <%=(app.getClientType() == OAuthConstants.OAuthClientType.PUBLIC ? "checked" : "")%> />Public</td>
                                 </tr>
                                 <tr>
                                     <td class="leftCol-med"><fmt:message key='user.access.token.expiry.time'/></td>

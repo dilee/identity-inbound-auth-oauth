@@ -60,20 +60,16 @@
     String refreshTokenExpiryTime = request.getParameter("refreshTokenExpiryTime");
     String idTokenExpiryTime = request.getParameter("idTokenExpiryTime");
     String grants;
+    String clientType = request.getParameter("clientType");
    	StringBuffer buff = new StringBuffer();
     boolean pkceMandatory = false;
     boolean pkceSupportPlain = false;
-    boolean publicClient = false;
 
     if(request.getParameter("pkce") != null) {
         pkceMandatory = true;
     }
     if(request.getParameter("pkce_plain") != null) {
         pkceSupportPlain = true;
-    }
-
-    if (request.getParameter("public_client") != null) {
-        publicClient = true;
     }
     
     // OIDC related properties
@@ -108,7 +104,7 @@
             app.setOAuthVersion(oauthVersion);
             app.setPkceMandatory(pkceMandatory);
             app.setPkceSupportPlain(pkceSupportPlain);
-            app.setPublicClient(publicClient);
+            app.setClientType(clientType);
             app.setUserAccessTokenExpiryTime(Long.parseLong(userAccessTokenExpiryTime));
             app.setApplicationAccessTokenExpiryTime(Long.parseLong(applicationAccessTokenExpiryTime));
             app.setRefreshTokenExpiryTime(Long.parseLong(refreshTokenExpiryTime));

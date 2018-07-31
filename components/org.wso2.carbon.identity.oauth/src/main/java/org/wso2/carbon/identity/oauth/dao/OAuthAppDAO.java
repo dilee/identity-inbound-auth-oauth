@@ -120,11 +120,11 @@ public class OAuthAppDAO {
                         prepStmt.setLong(13, consumerAppDO.getApplicationAccessTokenExpiryTime());
                         prepStmt.setLong(14, consumerAppDO.getRefreshTokenExpiryTime());
                         prepStmt.setLong(15, consumerAppDO.getIdTokenExpiryTime());
-                        prepStmt.setString(16, consumerAppDO.isPublicClient() ? "1" : "0");
                         prepStmt.execute();
                         try (ResultSet results = prepStmt.getGeneratedKeys()) {
                             if (results.next()) {
                                 appId = results.getInt(1);
+                                addOAuthAppMetaData(appId, consumerAppDO.getMetadata());
                             }
                         }
                     }
@@ -145,11 +145,11 @@ public class OAuthAppDAO {
                         prepStmt.setLong(11, consumerAppDO.getApplicationAccessTokenExpiryTime());
                         prepStmt.setLong(12, consumerAppDO.getRefreshTokenExpiryTime());
                         prepStmt.setLong(13, consumerAppDO.getIdTokenExpiryTime());
-                        prepStmt.setString(14, consumerAppDO.isPublicClient() ? "1" : "0");
                         prepStmt.execute();
                         try (ResultSet results = prepStmt.getGeneratedKeys()) {
                             if (results.next()) {
                                 appId = results.getInt(1);
+                                addOAuthAppMetaData(appId, consumerAppDO.getMetadata());
                             }
                         }
                     }
@@ -280,19 +280,18 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(14));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(15));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(16));
-                                oauthApp.setPublicClient(!"0".equals(rSet.getString(17)));
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(11));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(12));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(14));
-                                oauthApp.setPublicClient(!"0".equals(rSet.getString(15)));
                             }
 
                             oauthApp.setUser(authenticatedUser);
                             String spTenantDomain = authenticatedUser.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
                             oauthApp.setScopeValidators(getScopeValidators(connection, oauthApp.getId()));
+                            oauthApp.setMetadata(getOAuthAppMetaDataById(oauthApp.getId()));
                             oauthApps.add(oauthApp);
                         }
                     }
@@ -364,16 +363,15 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(14));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(15));
-                                oauthApp.setPublicClient(!"0".equals(rSet.getString(16)));
                                 oauthApp.setState(rSet.getString(17));
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(10));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(11));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(12));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(13));
-                                oauthApp.setPublicClient(!"0".equals(rSet.getString(14)));
                                 oauthApp.setState(rSet.getString(14));
                             }
+                            oauthApp.setMetadata(getOAuthAppMetaDataById(oauthApp.getId()));
 
                             String spTenantDomain = authenticatedUser.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
@@ -449,14 +447,14 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(12));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(14));
-                                oauthApp.setPublicClient(!"0".equals(rSet.getString(15)));
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(9));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(10));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(11));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(12));
-                                oauthApp.setPublicClient(!"0".equals(rSet.getString(13)));
                             }
+
+                            oauthApp.setMetadata(getOAuthAppMetaDataById(oauthApp.getId()));
 
                             String spTenantDomain = user.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
@@ -497,7 +495,6 @@ public class OAuthAppDAO {
                     prepStmt.setLong(7, oauthAppDO.getApplicationAccessTokenExpiryTime());
                     prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(9, oauthAppDO.getIdTokenExpiryTime());
-                    prepStmt.setString(10, oauthAppDO.isPublicClient() ? "1" : "0");
 
                     prepStmt.setString(11, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 } else {
@@ -505,9 +502,10 @@ public class OAuthAppDAO {
                     prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
                     prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
-                    prepStmt.setString(8, oauthAppDO.isPublicClient() ? "1" : "0");
                     prepStmt.setString(9, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 }
+
+                updateOAuthAppMetaData(oauthAppDO);
                 int count = prepStmt.executeUpdate();
                 updateScopeValidators(connection, oauthAppDO.getId(), oauthAppDO.getScopeValidators());
                 if (log.isDebugEnabled()) {
@@ -968,6 +966,81 @@ public class OAuthAppDAO {
             }
         }
         return appId;
+    }
+
+    /**
+     * Adds OAuth application metadata to the Database.
+     *
+     * @param appId     Application ID.
+     * @param metaData  Application Meta Data object.
+     * @throws SQLException SQL Exception.
+     */
+    private void addOAuthAppMetaData(int appId, OAuthAppMetaData metaData) throws SQLException {
+
+        try (Connection connection = IdentityDatabaseUtil.getDBConnection(); PreparedStatement
+                prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_APP_METADATA)) {
+            prepStmt.setInt(1, appId);
+            prepStmt.setString(2, metaData.getClientType());
+            prepStmt.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            throw new SQLException("Error while executing the SQL statement.", e);
+        }
+
+    }
+
+    /**
+     * Retrieves OAuth application meta data.
+     *
+     * @param appId Application ID.
+     * @return  OAuthAppMetaData object.
+     * @throws SQLException SQL Exception.
+     */
+    private OAuthAppMetaData getOAuthAppMetaDataById(int appId) throws SQLException {
+
+        OAuthAppMetaData metadata = new OAuthAppMetaData();
+        String clientType = null;
+
+        try (Connection connection = IdentityDatabaseUtil.getDBConnection(); PreparedStatement
+                prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_OAUTH_APP_METADATA_BY_ID)) {
+            prepStmt.setInt(1, appId);
+            prepStmt.execute();
+
+            try (ResultSet rSet = prepStmt.executeQuery()) {
+                if (rSet.next()) {
+                    clientType = rSet.getString("CLIENT_TYPE");
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("No App metadata found for the app: " + appId);
+                    }
+                }
+                metadata.setClientType(clientType);
+                connection.commit();
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            throw new SQLException("Error while executing the SQL statement.", e);
+        }
+
+        return metadata;
+    }
+
+    /**
+     * Updates OAuth application meta data.
+     *
+     * @param oauthAppDO    OAuth Pllication Data Object.
+     * @throws SQLException SQL Exception.
+     */
+    private void updateOAuthAppMetaData(OAuthAppDO oauthAppDO) throws SQLException {
+        try (Connection connection = IdentityDatabaseUtil.getDBConnection(); PreparedStatement
+                statement = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_APP_METADATA)) {
+            statement.setInt(1, oauthAppDO.getId());
+            statement.setString(2, oauthAppDO.getMetadata().getClientType());
+            statement.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            throw new SQLException("Error while executing the SQL statement.", e);
+        }
     }
 
     private void addServiceProviderOIDCProperties(Connection connection,

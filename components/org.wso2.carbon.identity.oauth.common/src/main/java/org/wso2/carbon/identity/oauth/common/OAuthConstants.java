@@ -349,6 +349,15 @@ public final class OAuthConstants {
         private SignatureAlgorithms() {}
     }
 
+    public static class OAuthClientType {
+        public static final String CONFIDENTIAL = "confidential";
+        public static final String PUBLIC = "public";
+
+        private OAuthClientType() {
+
+        }
+    }
+
     private OAuthConstants() {
 
     }

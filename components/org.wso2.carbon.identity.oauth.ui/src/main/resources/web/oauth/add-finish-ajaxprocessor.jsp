@@ -57,10 +57,10 @@
     String refreshTokenExpiryTime = request.getParameter("refreshTokenExpiryTime");
     String idTokenExpiryTime = request.getParameter("idTokenExpiryTime");
     String backchannelLogoutUrl = request.getParameter("backChannelLogout");
+    String clientType = request.getParameter("clientType");
 
 	boolean pkceMandatory = false;
 	boolean pkceSupportPlain = false;
-	boolean publicClient = false;
 
 
 	if(request.getParameter("pkce") != null) {
@@ -70,9 +70,6 @@
 		pkceSupportPlain = true;
 	}
 
-	if (request.getParameter("public_client") != null) {
-	    publicClient = true;
-    }
     
     // OIDC related properties
     boolean isRequestObjectSignatureValidated = Boolean.parseBoolean(request.getParameter("validateRequestObjectSignature"));
@@ -145,7 +142,7 @@
             }
             app.setPkceMandatory(pkceMandatory);
             app.setPkceSupportPlain(pkceSupportPlain);
-            app.setPublicClient(publicClient);
+            app.setClientType(clientType);
             
             // Set OIDC related configuration properties.
             app.setRequestObjectSignatureValidationEnabled(isRequestObjectSignatureValidated);

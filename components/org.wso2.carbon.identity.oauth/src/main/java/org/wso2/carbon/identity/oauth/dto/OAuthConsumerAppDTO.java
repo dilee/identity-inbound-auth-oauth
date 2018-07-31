@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.oauth.dto;
 
+import org.wso2.carbon.identity.oauth.dao.OAuthAppMetaData;
+
 public class OAuthConsumerAppDTO {
 
     private String oauthConsumerKey;
@@ -42,7 +44,7 @@ public class OAuthConsumerAppDTO {
     private String idTokenEncryptionMethod;
     private String backChannelLogoutUrl;
     private long idTokenExpiryTime;
-    private boolean publicClient;
+    private OAuthAppMetaData metaData;
 
     public long getUserAccessTokenExpiryTime() {
         return userAccessTokenExpiryTime;
@@ -219,12 +221,12 @@ public class OAuthConsumerAppDTO {
         this.idTokenExpiryTime = idTokenExpiryTime;
     }
 
-    public boolean getPublicClient() {
-        return publicClient;
+    public OAuthAppMetaData getMetadata() {
+        return metaData;
     }
 
-    public void setPublicClient(boolean publicClient) {
-        this.publicClient = publicClient;
+    public void setMetadata(OAuthAppMetaData metaData) {
+        this.metaData = metaData;
     }
 }
 

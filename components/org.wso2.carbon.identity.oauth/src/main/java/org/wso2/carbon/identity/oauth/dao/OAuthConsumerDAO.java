@@ -432,38 +432,6 @@ public class OAuthConsumerDAO {
         }
     }
 
-    /**
-     * Checking if the cunsuper app is a public app. If the app is marked as a public client, this method will return
-     * a true value.
-     *
-     * @param consumerKey Consumer key
-     * @return True if public client and false otherwise
-     * @throws IdentityOAuthAdminException Error when reading public client status of the app
-     */
-    public boolean getPublicClientStatusOfApp(String consumerKey) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement prepStmt = null;
-        ResultSet resultSet = null;
-
-        try {
-            prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.GET_PUBLIC_CLIENT_STATUS);
-            prepStmt.setString(1, consumerKey);
-            resultSet = prepStmt.executeQuery();
-
-            if (resultSet.next()) {
-                return resultSet.getString(1).equals("1");
-            }
-            connection.commit();
-        } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error when reading the public client status for consumer key : " +
-                    consumerKey, e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, resultSet, prepStmt);
-        }
-
-        return false;
-    }
-
     private String getCallbackURLOfApp(String consumerKey) throws IdentityOAuthAdminException {
         String callbackURL = null;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
