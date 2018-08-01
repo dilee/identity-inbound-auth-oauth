@@ -75,6 +75,7 @@ public class OAuthAppDAO {
     private static final String APP_STATE = "APP_STATE";
     private static final String USERNAME = "USERNAME";
     private static final String LOWER_USERNAME = "LOWER(USERNAME)";
+    private static final String META_DATA = "META_DATA";
     private TokenPersistenceProcessor persistenceProcessor;
     private boolean isHashDisabled = OAuth2Util.isHashDisabled();
     private Gson gson = new Gson();
@@ -294,12 +295,11 @@ public class OAuthAppDAO {
                             String spTenantDomain = authenticatedUser.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
                             oauthApp.setScopeValidators(getScopeValidators(connection, oauthApp.getId()));
-                            connection.commit();
                             oauthApps.add(oauthApp);
                         }
                     }
                     oauthAppsOfUser = oauthApps.toArray(new OAuthAppDO[oauthApps.size()]);
-
+                    connection.commit();
                 }
             }
         } catch (SQLException e) {
@@ -1012,7 +1012,7 @@ public class OAuthAppDAO {
 
             try (ResultSet rSet = prepStmt.executeQuery()) {
                 if (rSet.next()) {
-                    metaDataStr = rSet.getString("META_DATA");
+                    metaDataStr = rSet.getString(META_DATA);
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug("No App metadata found for the app: " + appId);
