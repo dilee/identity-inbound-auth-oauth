@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.oauth.dao;
+package org.wso2.carbon.identity.oauth.dto;
 
 import java.io.Serializable;
 

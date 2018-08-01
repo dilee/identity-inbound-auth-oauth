@@ -137,7 +137,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setUsername(app.getUser().toString());
                 dto.setPkceMandatory(app.isPkceMandatory());
                 dto.setPkceSupportPlain(app.isPkceSupportPlain());
-                dto.setPublicClient(app.getPublicClient());
+                dto.setMetaData(app.getMetaData());
                 dto.setUserAccessTokenExpiryTime(app.getUserAccessTokenExpiryTime());
                 dto.setApplicationAccessTokenExpiryTime(app.getApplicationAccessTokenExpiryTime());
                 dto.setRefreshTokenExpiryTime(app.getRefreshTokenExpiryTime());
@@ -177,7 +177,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setScopeValidators(app.getScopeValidators());
                 dto.setPkceMandatory(app.isPkceMandatory());
                 dto.setPkceSupportPlain(app.isPkceSupportPlain());
-                dto.setPublicClient(app.getPublicClient());
+                dto.setMetaData(app.getMetaData());
                 dto.setUserAccessTokenExpiryTime(app.getUserAccessTokenExpiryTime());
                 dto.setApplicationAccessTokenExpiryTime(app.getApplicationAccessTokenExpiryTime());
                 dto.setRefreshTokenExpiryTime(app.getRefreshTokenExpiryTime());
@@ -222,7 +222,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setScopeValidators(app.getScopeValidators());
                 dto.setPkceMandatory(app.isPkceMandatory());
                 dto.setPkceSupportPlain(app.isPkceSupportPlain());
-                dto.setPublicClient(app.getPublicClient());
+                dto.setMetaData(app.getMetaData());
                 dto.setUserAccessTokenExpiryTime(app.getUserAccessTokenExpiryTime());
                 dto.setApplicationAccessTokenExpiryTime(app.getApplicationAccessTokenExpiryTime());
                 dto.setRefreshTokenExpiryTime(app.getRefreshTokenExpiryTime());
@@ -326,14 +326,13 @@ public class OAuthAdminService extends AbstractAdmin {
                     app.setAudiences(application.getAudiences());
                     app.setPkceMandatory(application.getPkceMandatory());
                     app.setPkceSupportPlain(application.getPkceSupportPlain());
-                    app.setPublicClient(application.getPublicClient());
                     // Validate access token expiry configurations.
                     validateTokenExpiryConfigurations(application);
                     app.setUserAccessTokenExpiryTime(application.getUserAccessTokenExpiryTime());
                     app.setApplicationAccessTokenExpiryTime(application.getApplicationAccessTokenExpiryTime());
                     app.setRefreshTokenExpiryTime(application.getRefreshTokenExpiryTime());
                     app.setIdTokenExpiryTime(application.getIdTokenExpiryTime());
-                    app.setPublicClient(application.getPublicClient());
+                    app.setMetaData(application.getMetaData());
 
                     // Set OIDC Config Properties.
                     app.setRequestObjectSignatureValidationEnabled(application
@@ -442,7 +441,7 @@ public class OAuthAdminService extends AbstractAdmin {
         oauthappdo.setApplicationName(consumerAppDTO.getApplicationName());
         oauthappdo.setPkceMandatory(consumerAppDTO.getPkceMandatory());
         oauthappdo.setPkceSupportPlain(consumerAppDTO.getPkceSupportPlain());
-        oauthappdo.setPublicClient(consumerAppDTO.getPublicClient());
+        oauthappdo.setMetaData(consumerAppDTO.getMetaData());
         // Validate access token expiry configurations.
         validateTokenExpiryConfigurations(consumerAppDTO);
         oauthappdo.setUserAccessTokenExpiryTime(consumerAppDTO.getUserAccessTokenExpiryTime());
@@ -472,6 +471,7 @@ public class OAuthAdminService extends AbstractAdmin {
             oauthappdo.setBackChannelLogoutUrl(consumerAppDTO.getBackChannelLogoutUrl());
         }
         dao.updateConsumerApplication(oauthappdo);
+        OAuthCache.getInstance().clear();
         AppInfoCache.getInstance().addToCache(oauthappdo.getOauthConsumerKey(), oauthappdo);
         if (log.isDebugEnabled()) {
             log.debug("Oauth Application update success : " + consumerAppDTO.getApplicationName() + " in " +
@@ -697,7 +697,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                 appDTO.setScopeValidators(appDO.getScopeValidators());
                                 appDTO.setPkceMandatory(appDO.isPkceMandatory());
                                 appDTO.setPkceSupportPlain(appDO.isPkceSupportPlain());
-                                appDTO.setPublicClient(appDO.getPublicClient());
+                                appDTO.setMetaData(appDO.getMetaData());
                                 appDTO.setUserAccessTokenExpiryTime(appDO.getUserAccessTokenExpiryTime());
                                 appDTO.setApplicationAccessTokenExpiryTime(appDO.getApplicationAccessTokenExpiryTime());
                                 appDTO.setRefreshTokenExpiryTime(appDO.getRefreshTokenExpiryTime());

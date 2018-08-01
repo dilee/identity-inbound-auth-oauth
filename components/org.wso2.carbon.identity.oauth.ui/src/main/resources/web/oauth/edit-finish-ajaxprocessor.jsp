@@ -21,6 +21,7 @@
 <%@ page import="org.wso2.carbon.CarbonConstants"%>
 <%@ page import="org.wso2.carbon.identity.oauth.common.OAuthConstants"%>
 <%@ page import="org.wso2.carbon.identity.oauth.stub.dto.OAuthConsumerAppDTO"%>
+<%@ page import="org.wso2.carbon.identity.oauth.stub.dto.OAuthAppMetaData"%>
 <%@ page import="org.wso2.carbon.identity.oauth.ui.client.OAuthAdminClient"%>
 <%@ page import="org.wso2.carbon.ui.CarbonUIMessage"%>
 <%@ page import="org.wso2.carbon.ui.CarbonUIUtil"%>
@@ -31,6 +32,8 @@
 <%@ page import="org.wso2.carbon.identity.oauth.ui.util.OAuthUIUtil" %>
 <%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.List" %>
+<%@ page import="org.apache.commons.collections.bag.SynchronizedSortedBag" %>
+<%@ page import="javax.xml.bind.SchemaOutputResolver" %>
 
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 <%@ taglib uri="http://wso2.org/projects/carbon/taglibs/carbontags.jar" prefix="carbon"%>
@@ -96,6 +99,9 @@
             OAuthAdminClient client = new OAuthAdminClient(cookie, backendServerURL, configContext);
             isHashDisabled = client.isHashDisabled();
 
+            OAuthAppMetaData metadata = new OAuthAppMetaData();
+            metadata.setClientType(clientType);
+
             app.setOauthConsumerKey(consumerkey);
             app.setOauthConsumerSecret(consumersecret);
             app.setCallbackUrl(callback);
@@ -104,7 +110,7 @@
             app.setOAuthVersion(oauthVersion);
             app.setPkceMandatory(pkceMandatory);
             app.setPkceSupportPlain(pkceSupportPlain);
-            app.setClientType(clientType);
+            app.setMetaData(metadata);
             app.setUserAccessTokenExpiryTime(Long.parseLong(userAccessTokenExpiryTime));
             app.setApplicationAccessTokenExpiryTime(Long.parseLong(applicationAccessTokenExpiryTime));
             app.setRefreshTokenExpiryTime(Long.parseLong(refreshTokenExpiryTime));

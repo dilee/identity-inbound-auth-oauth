@@ -230,7 +230,7 @@
                         $(jQuery('#scope_validator_row')).hide();
                         $(jQuery("#pkce_enable").hide());
                         $(jQuery("#pkce_support_plain").hide());
-                        $(jQuery("#public_client").hide());
+                        $(jQuery("#clientTypet").hide());
                         $(jQuery('#userAccessTokenPlain').hide());
                         $(jQuery('#applicationAccessTokenPlain').hide());
                         $(jQuery('#refreshTokenPlain').hide());
@@ -249,7 +249,7 @@
                         $(jQuery('#scope_validator_row')).show();
                         $(jQuery("#pkce_enable").show());
                         $(jQuery("#pkce_support_plain").show());
-                        $(jQuery("#public_client").show());
+                        $(jQuery("#clientType").show());
                         $(jQuery('#userAccessTokenPlain').show());
                         $(jQuery('#applicationAccessTokenPlain').show());
                         $(jQuery('#refreshTokenPlain').show());
@@ -499,7 +499,7 @@
                                     </td>
                                 </tr>
                                 <% } %>
-                                <tr>
+                                <tr id="clientType">
                                     <td class="leftCol-med"><fmt:message key='oauth.clienttype'/><span class="required">*</span> </td>
                                     <td><input id="clientTypeConfidential" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.CONFIDENTIAL%>" CHECKED />Confidential
                                         <input id="clientTypePublic" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.PUBLIC%>" />Public</td>

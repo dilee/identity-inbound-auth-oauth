@@ -22,6 +22,7 @@
 <%@ page import="org.wso2.carbon.identity.core.util.IdentityUtil"%>
 <%@ page import="org.wso2.carbon.identity.oauth.common.OAuthConstants"%>
 <%@ page import="org.wso2.carbon.identity.oauth.stub.dto.OAuthConsumerAppDTO"%>
+<%@ page import="org.wso2.carbon.identity.oauth.stub.dto.OAuthAppMetaData"%>
 <%@ page import="org.wso2.carbon.identity.oauth.ui.client.OAuthAdminClient"%>
 <%@ page import="org.wso2.carbon.identity.oauth.ui.util.OAuthUIUtil"%>
 <%@ page import="org.wso2.carbon.ui.CarbonUIMessage" %>
@@ -142,7 +143,10 @@
             }
             app.setPkceMandatory(pkceMandatory);
             app.setPkceSupportPlain(pkceSupportPlain);
-            app.setClientType(clientType);
+
+            OAuthAppMetaData metadata = new OAuthAppMetaData();
+            metadata.setClientType(clientType);
+            app.setMetaData(metadata);
             
             // Set OIDC related configuration properties.
             app.setRequestObjectSignatureValidationEnabled(isRequestObjectSignatureValidated);

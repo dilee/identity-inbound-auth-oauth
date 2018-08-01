@@ -18,8 +18,6 @@
 
 package org.wso2.carbon.identity.oauth.dto;
 
-import org.wso2.carbon.identity.oauth.dao.OAuthAppMetaData;
-
 public class OAuthConsumerAppDTO {
 
     private String oauthConsumerKey;
@@ -221,11 +219,11 @@ public class OAuthConsumerAppDTO {
         this.idTokenExpiryTime = idTokenExpiryTime;
     }
 
-    public OAuthAppMetaData getMetadata() {
+    public OAuthAppMetaData getMetaData() {
         return metaData;
     }
 
-    public void setMetadata(OAuthAppMetaData metaData) {
+    public void setMetaData(OAuthAppMetaData metaData) {
         this.metaData = metaData;
     }
 }

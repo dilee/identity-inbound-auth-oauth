@@ -32,6 +32,7 @@ import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dto.OAuthAppMetaData;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
@@ -124,7 +125,6 @@ public class OAuthAppDAO {
                         try (ResultSet results = prepStmt.getGeneratedKeys()) {
                             if (results.next()) {
                                 appId = results.getInt(1);
-                                addOAuthAppMetaData(appId, consumerAppDO.getMetadata());
                             }
                         }
                     }
@@ -149,11 +149,11 @@ public class OAuthAppDAO {
                         try (ResultSet results = prepStmt.getGeneratedKeys()) {
                             if (results.next()) {
                                 appId = results.getInt(1);
-                                addOAuthAppMetaData(appId, consumerAppDO.getMetadata());
                             }
                         }
                     }
                 }
+                addOAuthAppMetaData(connection, appId, consumerAppDO.getMetaData());
                 // some JDBC Drivers returns this in the result, some don't
                 if (appId == 0) {
                     if (log.isDebugEnabled()) {
@@ -286,17 +286,18 @@ public class OAuthAppDAO {
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(14));
                             }
+                            oauthApp.setMetaData(getOAuthAppMetaDataById(connection, oauthApp.getId()));
 
                             oauthApp.setUser(authenticatedUser);
                             String spTenantDomain = authenticatedUser.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
                             oauthApp.setScopeValidators(getScopeValidators(connection, oauthApp.getId()));
-                            oauthApp.setMetadata(getOAuthAppMetaDataById(oauthApp.getId()));
+                            connection.commit();
                             oauthApps.add(oauthApp);
                         }
                     }
                     oauthAppsOfUser = oauthApps.toArray(new OAuthAppDO[oauthApps.size()]);
-                    connection.commit();
+
                 }
             }
         } catch (SQLException e) {
@@ -363,7 +364,7 @@ public class OAuthAppDAO {
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setRefreshTokenExpiryTime(rSet.getLong(14));
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(15));
-                                oauthApp.setState(rSet.getString(17));
+                                oauthApp.setState(rSet.getString(16));
                             } else {
                                 oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(10));
                                 oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(11));
@@ -371,7 +372,7 @@ public class OAuthAppDAO {
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(13));
                                 oauthApp.setState(rSet.getString(14));
                             }
-                            oauthApp.setMetadata(getOAuthAppMetaDataById(oauthApp.getId()));
+                            oauthApp.setMetaData(getOAuthAppMetaDataById(connection, oauthApp.getId()));
 
                             String spTenantDomain = authenticatedUser.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
@@ -454,7 +455,7 @@ public class OAuthAppDAO {
                                 oauthApp.setIdTokenExpiryTime(rSet.getLong(12));
                             }
 
-                            oauthApp.setMetadata(getOAuthAppMetaDataById(oauthApp.getId()));
+                            oauthApp.setMetaData(getOAuthAppMetaDataById(connection, oauthApp.getId()));
 
                             String spTenantDomain = user.getTenantDomain();
                             handleSpOIDCProperties(connection, preprocessedClientId, spTenantDomain, oauthApp);
@@ -496,16 +497,16 @@ public class OAuthAppDAO {
                     prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(9, oauthAppDO.getIdTokenExpiryTime());
 
-                    prepStmt.setString(11, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+                    prepStmt.setString(10, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 } else {
                     prepStmt.setLong(4, oauthAppDO.getUserAccessTokenExpiryTime());
                     prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
                     prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
                     prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
-                    prepStmt.setString(9, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+                    prepStmt.setString(8, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 }
 
-                updateOAuthAppMetaData(oauthAppDO);
+                updateOAuthAppMetaData(connection, oauthAppDO);
                 int count = prepStmt.executeUpdate();
                 updateScopeValidators(connection, oauthAppDO.getId(), oauthAppDO.getScopeValidators());
                 if (log.isDebugEnabled()) {
@@ -942,7 +943,7 @@ public class OAuthAppDAO {
      * @throws InvalidOAuthClientException Invalid OAuth Client Exception.
      * @throws IdentityOAuth2Exception     Identity OAuth2 Exception.
      */
-    private int getAppIdByClientId(Connection connection, String clientId)
+    public int getAppIdByClientId(Connection connection, String clientId)
             throws SQLException, InvalidOAuthClientException, IdentityOAuth2Exception {
 
         int appId = 0;
@@ -975,14 +976,13 @@ public class OAuthAppDAO {
      * @param metaData  Application Meta Data object.
      * @throws SQLException SQL Exception.
      */
-    private void addOAuthAppMetaData(int appId, OAuthAppMetaData metaData) throws SQLException {
+    public void addOAuthAppMetaData(Connection connection, int appId, OAuthAppMetaData metaData) throws SQLException {
 
-        try (Connection connection = IdentityDatabaseUtil.getDBConnection(); PreparedStatement
-                prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_APP_METADATA)) {
+        try (PreparedStatement prepStmt = connection.prepareStatement(SQLQueries.
+                OAuthAppDAOSQLQueries.ADD_OAUTH_APP_METADATA)) {
             prepStmt.setInt(1, appId);
             prepStmt.setString(2, metaData.getClientType());
             prepStmt.execute();
-            connection.commit();
         } catch (SQLException e) {
             throw new SQLException("Error while executing the SQL statement.", e);
         }
@@ -996,12 +996,12 @@ public class OAuthAppDAO {
      * @return  OAuthAppMetaData object.
      * @throws SQLException SQL Exception.
      */
-    private OAuthAppMetaData getOAuthAppMetaDataById(int appId) throws SQLException {
+    public OAuthAppMetaData getOAuthAppMetaDataById(Connection connection, int appId) throws SQLException {
 
         OAuthAppMetaData metadata = new OAuthAppMetaData();
         String clientType = null;
 
-        try (Connection connection = IdentityDatabaseUtil.getDBConnection(); PreparedStatement
+        try (PreparedStatement
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_OAUTH_APP_METADATA_BY_ID)) {
             prepStmt.setInt(1, appId);
             prepStmt.execute();
@@ -1015,9 +1015,7 @@ public class OAuthAppDAO {
                     }
                 }
                 metadata.setClientType(clientType);
-                connection.commit();
             }
-            connection.commit();
         } catch (SQLException e) {
             throw new SQLException("Error while executing the SQL statement.", e);
         }
@@ -1031,13 +1029,12 @@ public class OAuthAppDAO {
      * @param oauthAppDO    OAuth Pllication Data Object.
      * @throws SQLException SQL Exception.
      */
-    private void updateOAuthAppMetaData(OAuthAppDO oauthAppDO) throws SQLException {
-        try (Connection connection = IdentityDatabaseUtil.getDBConnection(); PreparedStatement
+    public void updateOAuthAppMetaData(Connection connection, OAuthAppDO oauthAppDO) throws SQLException {
+        try (PreparedStatement
                 statement = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_APP_METADATA)) {
-            statement.setInt(1, oauthAppDO.getId());
-            statement.setString(2, oauthAppDO.getMetadata().getClientType());
+            statement.setString(1, oauthAppDO.getMetaData().getClientType());
+            statement.setInt(2, oauthAppDO.getId());
             statement.execute();
-            connection.commit();
         } catch (SQLException e) {
             throw new SQLException("Error while executing the SQL statement.", e);
         }

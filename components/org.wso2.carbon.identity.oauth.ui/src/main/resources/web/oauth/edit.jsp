@@ -555,8 +555,8 @@
                                 <% } %>
                                 <tr>
                                     <td class="leftCol-med"><fmt:message key='oauth.clienttype'/><span class="required">*</span> </td>
-                                    <td><input id="clientTypeConfidential" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.CONFIDENTIAL%>" <%=(app.getClientType() == OAuthConstants.OAuthClientType.CONFIDENTIAL ? "checked" : "")%> />Confidential
-                                        <input id="clientTypePublic" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.PUBLIC%>" <%=(app.getClientType() == OAuthConstants.OAuthClientType.PUBLIC ? "checked" : "")%> />Public</td>
+                                    <td><input id="clientTypeConfidential" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.CONFIDENTIAL%>" <%=((app.getMetaData().getClientType().equalsIgnoreCase(OAuthConstants.OAuthClientType.CONFIDENTIAL)) ? "checked=\"checked\"" : "")%> />Confidential
+                                        <input id="clientTypePublic" name="clientType" type="radio" value="<%=OAuthConstants.OAuthClientType.PUBLIC%>" <%=((app.getMetaData().getClientType().equalsIgnoreCase(OAuthConstants.OAuthClientType.PUBLIC)) ? "checked=\"checked\"" : "")%> />Public</td>
                                 </tr>
                                 <tr>
                                     <td class="leftCol-med"><fmt:message key='user.access.token.expiry.time'/></td>

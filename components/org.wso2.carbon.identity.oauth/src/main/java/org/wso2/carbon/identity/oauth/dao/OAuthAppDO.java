@@ -18,6 +18,7 @@
 package org.wso2.carbon.identity.oauth.dao;
 
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.oauth.dto.OAuthAppMetaData;
 
 import java.io.Serializable;
 
@@ -228,11 +229,11 @@ public class OAuthAppDO implements Serializable {
         this.idTokenExpiryTime = idTokenExpiryTime;
     }
 
-    public OAuthAppMetaData getMetadata() {
+    public OAuthAppMetaData getMetaData() {
         return metaData;
     }
 
-    public void setMetadata(OAuthAppMetaData metaData) {
+    public void setMetaData(OAuthAppMetaData metaData) {
         this.metaData = metaData;
     }
     

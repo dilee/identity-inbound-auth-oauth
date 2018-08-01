@@ -57,11 +57,7 @@ import org.wso2.carbon.identity.application.common.util.IdentityApplicationConst
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
-import org.wso2.carbon.identity.core.util.IdentityConfigParser;
-import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
-import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
-import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.core.util.*;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
@@ -72,6 +68,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
+import org.wso2.carbon.identity.oauth.dto.OAuthAppMetaData;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -111,6 +108,8 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -147,6 +146,7 @@ public class OAuth2Util {
     public static final String OPENID_CONNECT_AUDIENCE = "audience";
 
     private static final String ALGORITHM_NONE = "NONE";
+    private static final String CLIENT_TYPE_PUBLIC = "Public";
     /*
      * OPTIONAL. A JSON string containing a space-separated list of scopes associated with this token, in the format
      * described in Section 3.3 of OAuth 2.0
@@ -446,6 +446,39 @@ public class OAuth2Util {
         }
 
         return true;
+    }
+
+    public static boolean isPublicClient(String clientId) throws IdentityOAuth2Exception, SQLException, InvalidOAuthClientException {
+        boolean cacheHit = false;
+
+        // Checking the cache first
+//        CacheEntry cacheResult = OAuthCache.getInstance().getValueFromCache(new OAuthCacheKey(clientId));
+//        if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
+//            ClientCredentialDO clientCredentialDO = (ClientCredentialDO) cacheResult;
+//            cacheHit = true;
+//            if (log.isDebugEnabled()) {
+//                log.debug("Client credentials were available in the cache for client id : " +
+//                        clientId);
+//            }
+//        }
+        OAuthAppMetaData metadata = null;
+        OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+
+        int appId = oAuthAppDAO.getAppIdByClientId(connection, clientId);
+
+        if (appId != 0) {
+            metadata = oAuthAppDAO.getOAuthAppMetaDataById(connection, appId);
+        }
+
+        if (metadata != null) {
+            if (metadata.getClientType().equalsIgnoreCase(CLIENT_TYPE_PUBLIC)) {
+                return true;
+            }
+        }
+
+        return false;
+
     }
 
     /**
