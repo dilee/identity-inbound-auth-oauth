@@ -448,6 +448,15 @@ public class OAuth2Util {
         return true;
     }
 
+    /**
+     * Checks if a client is public or not.
+     *
+     * @param clientId Client ID.
+     * @return  True is public, False otherwise.
+     * @throws IdentityOAuth2Exception  Identity OAuth Exception.
+     * @throws SQLException             SQL Exception.
+     * @throws InvalidOAuthClientException  Invalic OAuth Client Exception.
+     */
     public static boolean isPublicClient(String clientId) throws IdentityOAuth2Exception, SQLException, InvalidOAuthClientException {
 
         OAuthAppMetaData metadata = null;
