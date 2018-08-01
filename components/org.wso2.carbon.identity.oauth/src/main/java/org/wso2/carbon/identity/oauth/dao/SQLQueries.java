@@ -164,9 +164,9 @@ public class SQLQueries {
 
         public static final String GET_OAUTH_APP_METADATA_BY_ID = "SELECT * FROM OAUTH_APP_METADATA WHERE APP_ID=?";
 
-        public static final String ADD_OAUTH_APP_METADATA = "INSERT INTO OAUTH_APP_METADATA (APP_ID, CLIENT_TYPE) VALUES (?,?) ";
+        public static final String ADD_OAUTH_APP_METADATA = "INSERT INTO OAUTH_APP_METADATA (APP_ID, META_DATA) VALUES (?,?) ";
 
-        public static final String UPDATE_OAUTH_APP_METADATA = "UPDATE OAUTH_APP_METADATA SET CLIENT_TYPE=? WHERE APP_ID=?";
+        public static final String UPDATE_OAUTH_APP_METADATA = "UPDATE OAUTH_APP_METADATA SET META_DATA=? WHERE APP_ID=?";
 
         private OAuthAppDAOSQLQueries() {
         }

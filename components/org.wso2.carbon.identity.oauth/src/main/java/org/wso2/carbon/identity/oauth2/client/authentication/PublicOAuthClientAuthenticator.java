@@ -25,13 +25,15 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.OAuth;
-import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
-import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.bean.OAuthClientAuthnContext;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 
 import javax.servlet.http.HttpServletRequest;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -86,13 +88,9 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
     public boolean canAuthenticate(HttpServletRequest request, Map<String, List> bodyParams, OAuthClientAuthnContext
             context) {
 
-        OAuthConsumerDAO oAuthConsumerDAO = new OAuthConsumerDAO();
-
         if (isAuthorizationHeaderExists(request)) {
             if (isClientSecretExists(getAuthorizationHeader(request))) {
                 return false;
-            } else {
-                setClientIdFromHeader(request, context);
             }
         }
 
@@ -100,7 +98,7 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
             context.setClientId(getClientId(request, bodyParams, context));
 
             if (isClientIdExistsAsParams(bodyParams)) {
-                if (oAuthConsumerDAO.getPublicClientStatusOfApp(context.getClientId())) {
+                if (OAuth2Util.isPublicClient(context.getClientId())) {
                     return true;
                 } else {
                     if (log.isDebugEnabled()) {
@@ -113,11 +111,15 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
                     log.debug("Client ID could not be retrieved.");
                 }
             }
-        } catch (IdentityOAuthAdminException e) {
+        } catch (InvalidOAuthClientException e) {
             if (log.isDebugEnabled()) {
-                log.debug("Public client status could not be retrieved.");
+                log.debug("Client ID could not be retrieved.");
             }
-        } catch (OAuthClientAuthnException e) {
+        } catch (IdentityOAuth2Exception e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Client ID could not be retrieved.");
+            }
+        } catch (SQLException e) {
             if (log.isDebugEnabled()) {
                 log.debug("Client ID could not be retrieved.");
             }
@@ -126,6 +128,7 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
             log.debug("Client ID not present as Authorization header nor as body params. Hence " +
                     "returning false");
         }
+
         return false;
     }
 

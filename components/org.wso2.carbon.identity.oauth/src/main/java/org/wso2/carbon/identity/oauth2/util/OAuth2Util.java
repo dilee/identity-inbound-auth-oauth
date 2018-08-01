@@ -449,18 +449,7 @@ public class OAuth2Util {
     }
 
     public static boolean isPublicClient(String clientId) throws IdentityOAuth2Exception, SQLException, InvalidOAuthClientException {
-        boolean cacheHit = false;
 
-        // Checking the cache first
-//        CacheEntry cacheResult = OAuthCache.getInstance().getValueFromCache(new OAuthCacheKey(clientId));
-//        if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
-//            ClientCredentialDO clientCredentialDO = (ClientCredentialDO) cacheResult;
-//            cacheHit = true;
-//            if (log.isDebugEnabled()) {
-//                log.debug("Client credentials were available in the cache for client id : " +
-//                        clientId);
-//            }
-//        }
         OAuthAppMetaData metadata = null;
         OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
         Connection connection = IdentityDatabaseUtil.getDBConnection();

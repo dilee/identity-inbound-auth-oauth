@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth.dao;
 
+import com.google.gson.Gson;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -76,6 +77,7 @@ public class OAuthAppDAO {
     private static final String LOWER_USERNAME = "LOWER(USERNAME)";
     private TokenPersistenceProcessor persistenceProcessor;
     private boolean isHashDisabled = OAuth2Util.isHashDisabled();
+    private Gson gson = new Gson();
 
     public OAuthAppDAO() {
 
@@ -978,10 +980,12 @@ public class OAuthAppDAO {
      */
     public void addOAuthAppMetaData(Connection connection, int appId, OAuthAppMetaData metaData) throws SQLException {
 
+        String metaDataJSONstr = gson.toJson(metaData);
+
         try (PreparedStatement prepStmt = connection.prepareStatement(SQLQueries.
                 OAuthAppDAOSQLQueries.ADD_OAUTH_APP_METADATA)) {
             prepStmt.setInt(1, appId);
-            prepStmt.setString(2, metaData.getClientType());
+            prepStmt.setString(2, metaDataJSONstr);
             prepStmt.execute();
         } catch (SQLException e) {
             throw new SQLException("Error while executing the SQL statement.", e);
@@ -998,8 +1002,8 @@ public class OAuthAppDAO {
      */
     public OAuthAppMetaData getOAuthAppMetaDataById(Connection connection, int appId) throws SQLException {
 
-        OAuthAppMetaData metadata = new OAuthAppMetaData();
-        String clientType = null;
+        OAuthAppMetaData metadata;
+        String metaDataStr = null;
 
         try (PreparedStatement
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_OAUTH_APP_METADATA_BY_ID)) {
@@ -1008,13 +1012,13 @@ public class OAuthAppDAO {
 
             try (ResultSet rSet = prepStmt.executeQuery()) {
                 if (rSet.next()) {
-                    clientType = rSet.getString("CLIENT_TYPE");
+                    metaDataStr = rSet.getString("META_DATA");
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug("No App metadata found for the app: " + appId);
                     }
                 }
-                metadata.setClientType(clientType);
+                metadata = gson.fromJson(metaDataStr, OAuthAppMetaData.class);
             }
         } catch (SQLException e) {
             throw new SQLException("Error while executing the SQL statement.", e);
@@ -1030,9 +1034,12 @@ public class OAuthAppDAO {
      * @throws SQLException SQL Exception.
      */
     public void updateOAuthAppMetaData(Connection connection, OAuthAppDO oauthAppDO) throws SQLException {
+
+        String metaDataJSONstr = gson.toJson(oauthAppDO.getMetaData());
+
         try (PreparedStatement
                 statement = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_APP_METADATA)) {
-            statement.setString(1, oauthAppDO.getMetaData().getClientType());
+            statement.setString(1, metaDataJSONstr);
             statement.setInt(2, oauthAppDO.getId());
             statement.execute();
         } catch (SQLException e) {
