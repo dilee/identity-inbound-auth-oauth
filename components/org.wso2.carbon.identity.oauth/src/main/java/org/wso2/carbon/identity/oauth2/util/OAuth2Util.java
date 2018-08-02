@@ -459,20 +459,15 @@ public class OAuth2Util {
      */
     public static boolean isPublicClient(String clientId) throws IdentityOAuth2Exception, SQLException, InvalidOAuthClientException {
 
-        OAuthAppMetaData metadata = null;
         OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(clientId);
 
-        int appId = oAuthAppDAO.getAppIdByClientId(connection, clientId);
-
-        if (appId != 0) {
-            metadata = oAuthAppDAO.getOAuthAppMetaDataById(connection, appId);
+        if (oAuthAppDO == null) {
+            oAuthAppDO = oAuthAppDAO.getAppInformation(clientId);
         }
 
-        if (metadata != null) {
-            if (metadata.getClientType().equalsIgnoreCase(CLIENT_TYPE_PUBLIC)) {
-                return true;
-            }
+        if (oAuthAppDO.getMetaData().getClientType().equalsIgnoreCase(CLIENT_TYPE_PUBLIC)) {
+            return true;
         }
 
         return false;
