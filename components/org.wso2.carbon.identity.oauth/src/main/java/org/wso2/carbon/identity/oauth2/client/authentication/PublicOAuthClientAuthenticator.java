@@ -97,8 +97,7 @@ public class PublicOAuthClientAuthenticator extends AbstractOAuthClientAuthentic
         try {
             context.setClientId(getClientId(request, bodyParams, context));
 
-            if (isClientIdExistsAsParams(bodyParams)) {
-                if (OAuth2Util.isPublicClient(context.getClientId())) {
+            if (isClientIdExistsAsParams(bodyParams)) { if (OAuth2Util.isPublicClient(context.getClientId())) {
                     return true;
                 } else {
                     if (log.isDebugEnabled()) {

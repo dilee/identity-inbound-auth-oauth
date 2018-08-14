@@ -230,7 +230,7 @@
                         $(jQuery('#scope_validator_row')).hide();
                         $(jQuery("#pkce_enable").hide());
                         $(jQuery("#pkce_support_plain").hide());
-                        $(jQuery("#clientTypet").hide());
+                        $(jQuery("#clientType").hide());
                         $(jQuery('#userAccessTokenPlain').hide());
                         $(jQuery('#applicationAccessTokenPlain').hide());
                         $(jQuery('#refreshTokenPlain').hide());
