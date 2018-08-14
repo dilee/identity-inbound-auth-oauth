@@ -66,6 +66,7 @@ import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.T
 public class ResponseTypeHandlerUtil {
     public static final int SECOND_TO_MILLISECONDS_FACTOR = 1000;
     private static Log log = LogFactory.getLog(ResponseTypeHandlerUtil.class);
+    private static boolean isHashDisabled = OAuth2Util.isHashDisabled();
 
     public static void triggerPreListeners(OAuthAuthzReqMessageContext oauthAuthzMsgCtx) {
         OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
@@ -103,6 +104,39 @@ public class ResponseTypeHandlerUtil {
         }
     }
 
+    /**
+     * Generates access token for the issuer type registered in the service provider app.
+     *
+     * @param oauthAuthzMsgCtx
+     * @param cacheEnabled
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    public static AccessTokenDO generateAccessToken(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, boolean cacheEnabled)
+            throws IdentityOAuth2Exception {
+
+        String consumerKey = oauthAuthzMsgCtx.getAuthorizationReqDTO().getConsumerKey();
+        OauthTokenIssuer oauthTokenIssuer;
+        try {
+             oauthTokenIssuer = OAuth2Util.getOAuthTokenIssuerForOAuthApp(consumerKey);
+        } catch (InvalidOAuthClientException e) {
+            String errorMsg = "Error when instantiating the OAuthIssuer for service provider app with client Id: " +
+                    consumerKey + ". Defaulting to OAuthIssuerImpl";
+            log.error(errorMsg, e);
+            oauthTokenIssuer = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
+        }
+        return generateAccessToken(oauthAuthzMsgCtx, cacheEnabled, oauthTokenIssuer);
+    }
+
+    /**
+     * Generates access token for the given oauth issuer.
+     *
+     * @param oauthAuthzMsgCtx
+     * @param cacheEnabled
+     * @param oauthIssuerImpl
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
     public static AccessTokenDO generateAccessToken(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, boolean cacheEnabled,
                                               OauthTokenIssuer oauthIssuerImpl)
             throws IdentityOAuth2Exception {
@@ -137,6 +171,19 @@ public class ResponseTypeHandlerUtil {
         }
     }
 
+    public static AuthzCodeDO generateAuthorizationCode(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, boolean cacheEnabled)
+            throws IdentityOAuth2Exception {
+        OAuth2AuthorizeReqDTO authorizationReqDTO = oauthAuthzMsgCtx.getAuthorizationReqDTO();
+        String consumerKey = authorizationReqDTO.getConsumerKey();
+        try {
+            OauthTokenIssuer oauthTokenIssuer = OAuth2Util.getOAuthTokenIssuerForOAuthApp(consumerKey);
+            return generateAuthorizationCode(oauthAuthzMsgCtx, cacheEnabled, oauthTokenIssuer);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception(
+                    "Error while retrieving oauth issuer for the app with clientId: " + consumerKey, e);
+        }
+    }
+
     public static AuthzCodeDO generateAuthorizationCode(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, boolean cacheEnabled,
                                                  OauthTokenIssuer oauthIssuerImpl)
             throws IdentityOAuth2Exception {
@@ -145,15 +192,6 @@ public class ResponseTypeHandlerUtil {
         String authorizationCode;
         String codeId = UUID.randomUUID().toString();
         Timestamp timestamp = new Timestamp(new Date().getTime());
-
-        // Loading the stored application data.
-        String consumerKey = authorizationReqDTO.getConsumerKey();
-        OAuthAppDO oAuthAppDO = null;
-        try {
-            oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
-        } catch (InvalidOAuthClientException e) {
-            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId: " + consumerKey, e);
-        }
 
         long validityPeriod = OAuthServerConfiguration.getInstance()
                 .getAuthorizationCodeValidityPeriodInSeconds();
@@ -172,6 +210,7 @@ public class ResponseTypeHandlerUtil {
         // set the validity period. this is needed by downstream handlers.
         // if this is set before - then this will override it by the calculated new value.
         oauthAuthzMsgCtx.setValidityPeriod(validityPeriod);
+        oauthAuthzMsgCtx.setAuthorizationCodeValidityPeriod(validityPeriod);
 
         // set code issued time.this is needed by downstream handlers.
         oauthAuthzMsgCtx.setCodeIssuedTime(timestamp.getTime());
@@ -450,7 +489,7 @@ public class ResponseTypeHandlerUtil {
         persistAccessTokenInDB(oauthAuthzMsgCtx, existingTokenBean, newTokenBean);
         deactivateCurrentAuthorizationCode(newTokenBean.getAuthorizationCode(), newTokenBean.getTokenId());
         //update cache with newly added token
-        if (cacheEnabled) {
+        if (isHashDisabled && cacheEnabled) {
             addTokenToCache(getOAuthCacheKey(consumerKey, scope, authorizedUser), newTokenBean);
         }
         return newTokenBean;
@@ -621,7 +660,7 @@ public class ResponseTypeHandlerUtil {
 
         long validityPeriodInMillis;
 
-        long callbackValidityPeriod = oauthAuthzMsgCtx.getValidityPeriod();
+        long callbackValidityPeriod = oauthAuthzMsgCtx.getAccessTokenValidityPeriod();
         if (callbackValidityPeriod != OAuthConstants.UNASSIGNED_VALIDITY_PERIOD && callbackValidityPeriod > 0) {
             // If a valid validity period is set through the callback, use it.
             validityPeriodInMillis = callbackValidityPeriod * SECOND_TO_MILLISECONDS_FACTOR;

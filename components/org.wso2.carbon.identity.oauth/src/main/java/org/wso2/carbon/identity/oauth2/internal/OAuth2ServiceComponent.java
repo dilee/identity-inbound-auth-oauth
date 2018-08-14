@@ -42,6 +42,7 @@ import org.wso2.carbon.identity.oauth2.client.authentication.BasicAuthClientAuth
 import org.wso2.carbon.identity.oauth2.client.authentication.OAuthClientAuthenticator;
 import org.wso2.carbon.identity.oauth2.client.authentication.OAuthClientAuthnService;
 import org.wso2.carbon.identity.oauth2.client.authentication.PublicOAuthClientAuthenticator;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.identity.oauth2.dao.SQLQueries;
 import org.wso2.carbon.identity.oauth2.listener.TenantCreationEventListener;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
@@ -63,6 +64,7 @@ import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.checkAudienceEnabl
         immediate = true
 )
 public class OAuth2ServiceComponent {
+
     private static Log log = LogFactory.getLog(OAuth2ServiceComponent.class);
     private BundleContext bundleContext;
 
@@ -75,11 +77,13 @@ public class OAuth2ServiceComponent {
     )
     protected static void setAuthenticationMethodNameTranslator(
             AuthenticationMethodNameTranslator authenticationMethodNameTranslator) {
+
         OAuth2ServiceComponentHolder.setAuthenticationMethodNameTranslator(authenticationMethodNameTranslator);
     }
 
     protected static void unsetAuthenticationMethodNameTranslator(
             AuthenticationMethodNameTranslator authenticationMethodNameTranslator) {
+
         if (OAuth2ServiceComponentHolder.getAuthenticationMethodNameTranslator() ==
                 authenticationMethodNameTranslator) {
             OAuth2ServiceComponentHolder.setAuthenticationMethodNameTranslator(null);
@@ -87,9 +91,14 @@ public class OAuth2ServiceComponent {
     }
 
     protected void activate(ComponentContext context) {
+
         try {
             int tenantId = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
-            OAuth2Util.initiateOIDCScopes(tenantId);
+            boolean isRecordExist = OAuthTokenPersistenceFactory.getInstance().getScopeClaimMappingDAO().
+                    hasScopesPopulated(tenantId);
+            if (!isRecordExist) {
+                OAuth2Util.initiateOIDCScopes(tenantId);
+            }
             TenantCreationEventListener scopeTenantMgtListener = new TenantCreationEventListener();
             //Registering OAuth2Service as a OSGIService
             bundleContext = context.getBundleContext();
@@ -194,6 +203,7 @@ public class OAuth2ServiceComponent {
             unbind = "unsetApplicationMgtService"
     )
     protected void setApplicationMgtService(ApplicationManagementService applicationMgtService) {
+
         if (log.isDebugEnabled()) {
             log.debug("ApplicationManagementService set in Identity OAuth2ServiceComponent bundle");
         }
@@ -206,6 +216,7 @@ public class OAuth2ServiceComponent {
      * @param applicationMgtService Application management service
      */
     protected void unsetApplicationMgtService(ApplicationManagementService applicationMgtService) {
+
         if (log.isDebugEnabled()) {
             log.debug("ApplicationManagementService unset in Identity OAuth2ServiceComponent bundle");
         }
@@ -230,6 +241,7 @@ public class OAuth2ServiceComponent {
     }
 
     private boolean checkPKCESupport() {
+
         try (Connection connection = IdentityDatabaseUtil.getDBConnection()) {
 
             String sql;
@@ -272,6 +284,7 @@ public class OAuth2ServiceComponent {
             unbind = "unsetRegistryService"
     )
     protected void setRegistryService(RegistryService registryService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Setting the Registry Service");
         }
@@ -279,6 +292,7 @@ public class OAuth2ServiceComponent {
     }
 
     protected void unsetRegistryService(RegistryService registryService) {
+
         if (log.isDebugEnabled()) {
             log.debug("UnSetting the Registry Service");
         }
@@ -293,6 +307,7 @@ public class OAuth2ServiceComponent {
             unbind = "unsetOAuthClientAuthenticator"
     )
     protected void setOAuthClientAuthenticator(OAuthClientAuthenticator oAuthClientAuthenticator) {
+
         if (log.isDebugEnabled()) {
             log.debug("Adding OAuth client authentication handler : " + oAuthClientAuthenticator.getName());
         }
@@ -300,6 +315,7 @@ public class OAuth2ServiceComponent {
     }
 
     protected void unsetOAuthClientAuthenticator(OAuthClientAuthenticator oAuthClientAuthenticator) {
+
         if (log.isDebugEnabled()) {
             log.debug("UnSetting the Registry Service");
         }

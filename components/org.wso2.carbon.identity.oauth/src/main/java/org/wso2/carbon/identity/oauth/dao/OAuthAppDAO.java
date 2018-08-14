@@ -20,9 +20,12 @@ package org.wso2.carbon.identity.oauth.dao;
 
 import com.google.gson.Gson;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.CarbonConstants;
 import org.wso2.carbon.context.CarbonContext;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
@@ -39,10 +42,12 @@ import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcess
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.user.mgt.UserMgtConstants;
 import org.wso2.carbon.utils.DBUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
@@ -64,6 +69,7 @@ import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCConfigPro
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCConfigProperties.ID_TOKEN_ENCRYPTION_METHOD;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCConfigProperties.ID_TOKEN_ENCRYPTED;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCConfigProperties.REQUEST_OBJECT_SIGNED;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCConfigProperties.TOKEN_TYPE;
 import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.OPENID_CONNECT_AUDIENCE;
 
 /**
@@ -348,6 +354,8 @@ public class OAuthAppDAO {
                             if (isHashDisabled) {
                                 oauthApp.setOauthConsumerSecret(persistenceProcessor.getPreprocessedClientSecret(rSet
                                         .getString(1)));
+                            } else {
+                                oauthApp.setOauthConsumerSecret(rSet.getString(1));
                             }
                             AuthenticatedUser authenticatedUser = new AuthenticatedUser();
                             authenticatedUser.setUserName(rSet.getString(2));
@@ -431,6 +439,8 @@ public class OAuthAppDAO {
                             if (isHashDisabled) {
                                 oauthApp.setOauthConsumerSecret(persistenceProcessor.getPreprocessedClientSecret(rSet
                                         .getString(1)));
+                            } else {
+                                oauthApp.setOauthConsumerSecret(rSet.getString(1));
                             }
                             user.setUserName(rSet.getString(2));
                             user.setUserStoreDomain(rSet.getString(3));
@@ -478,34 +488,22 @@ public class OAuthAppDAO {
     }
 
     public void updateConsumerApplication(OAuthAppDO oauthAppDO) throws IdentityOAuthAdminException {
-
+        boolean isUserValidForOwnerUpdate = validateUserForOwnerUpdate(oauthAppDO);
         try (Connection connection = IdentityDatabaseUtil.getDBConnection()) {
-            String sqlQuery;
-            if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
-                sqlQuery = SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP_WITH_PKCE;
-            } else {
-                sqlQuery = SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP;
-            }
-
+            String sqlQuery = getSqlQuery(isUserValidForOwnerUpdate);
             try (PreparedStatement prepStmt = connection.prepareStatement(sqlQuery)) {
                 prepStmt.setString(1, oauthAppDO.getApplicationName());
                 prepStmt.setString(2, oauthAppDO.getCallbackUrl());
                 prepStmt.setString(3, oauthAppDO.getGrantTypes());
-                if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
-                    prepStmt.setString(4, oauthAppDO.isPkceMandatory() ? "1" : "0");
-                    prepStmt.setString(5, oauthAppDO.isPkceSupportPlain() ? "1" : "0");
-                    prepStmt.setLong(6, oauthAppDO.getUserAccessTokenExpiryTime());
-                    prepStmt.setLong(7, oauthAppDO.getApplicationAccessTokenExpiryTime());
-                    prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
-                    prepStmt.setLong(9, oauthAppDO.getIdTokenExpiryTime());
 
-                    prepStmt.setString(10, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
-                } else {
-                    prepStmt.setLong(4, oauthAppDO.getUserAccessTokenExpiryTime());
-                    prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
-                    prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
-                    prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
-                    prepStmt.setString(8, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+                if (OAuth2ServiceComponentHolder.isPkceEnabled() && isUserValidForOwnerUpdate) {
+                    setValuesToStatementWithPKCEAndOwnerUpdate(oauthAppDO, prepStmt);
+                } else if (OAuth2ServiceComponentHolder.isPkceEnabled() && !isUserValidForOwnerUpdate) {
+                    setValuesToStatementWithPKCENoOwnerUpdate(oauthAppDO, prepStmt);
+                } else if (!OAuth2ServiceComponentHolder.isPkceEnabled() && isUserValidForOwnerUpdate) {
+                    setValuesToStatementWithOwnerUpdateNoPKCE(oauthAppDO, prepStmt);
+                } else if (!OAuth2ServiceComponentHolder.isPkceEnabled() && !isUserValidForOwnerUpdate) {
+                    setValuesToStatementWithNoPKCEAndNoOwnerUpdate(oauthAppDO, prepStmt);
                 }
 
                 updateOAuthAppMetaData(connection, oauthAppDO);
@@ -524,6 +522,100 @@ public class OAuthAppDAO {
             throw handleError("Error occurred while processing client id and client secret by " +
                     "TokenPersistenceProcessor", e);
         }
+    }
+
+    private boolean validateUserForOwnerUpdate(OAuthAppDO oAuthAppDO) throws IdentityOAuthAdminException {
+
+        try {
+            String userName = null;
+            String usernameWithDomain = null;
+            if (oAuthAppDO.getAppOwner() != null) {
+                userName = oAuthAppDO.getAppOwner().getUserName();
+                if (StringUtils.isEmpty(userName) || CarbonConstants.REGISTRY_SYSTEM_USERNAME.equals(userName)) {
+                    return false;
+                }
+                String domainName = oAuthAppDO.getAppOwner().getUserStoreDomain();
+                usernameWithDomain = UserCoreUtil.addDomainToName(userName, domainName);
+            }
+
+            UserRealm realm = PrivilegedCarbonContext.getThreadLocalCarbonContext().getUserRealm();
+            if (realm == null || StringUtils.isEmpty(usernameWithDomain)) {
+                return false;
+            }
+
+            boolean isUserExist = realm.getUserStoreManager().isExistingUser(usernameWithDomain);
+            if (!isUserExist) {
+                throw new IdentityOAuthAdminException("User validation failed for owner update in the application: " +
+                        oAuthAppDO.getApplicationName() + " as user is not existing.");
+            }
+        } catch (UserStoreException e) {
+            throw handleError("User validation failed for owner update in the application: " +
+                    oAuthAppDO.getApplicationName(), e);
+        }
+        return true;
+    }
+
+    private String getSqlQuery(boolean isUserValidForOwnerUpdate) {
+
+        String sqlQuery = null;
+        if (OAuth2ServiceComponentHolder.isPkceEnabled() && isUserValidForOwnerUpdate) {
+            sqlQuery = SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP_WITH_PKCE_AND_OWNER_UPDATE;
+        } else if (OAuth2ServiceComponentHolder.isPkceEnabled() && !isUserValidForOwnerUpdate) {
+            sqlQuery = SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP_WITH_PKCE;
+        } else if (!OAuth2ServiceComponentHolder.isPkceEnabled() && isUserValidForOwnerUpdate) {
+            sqlQuery = SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP_WITH_OWNER_UPDATE;
+        } else if (!OAuth2ServiceComponentHolder.isPkceEnabled() && !isUserValidForOwnerUpdate) {
+            sqlQuery = SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP;
+        }
+        return sqlQuery;
+    }
+
+    private void setValuesToStatementWithPKCEAndOwnerUpdate(OAuthAppDO oauthAppDO, PreparedStatement prepStmt) throws SQLException,
+            IdentityOAuth2Exception {
+
+        prepStmt.setString(4, oauthAppDO.isPkceMandatory() ? "1" : "0");
+        prepStmt.setString(5, oauthAppDO.isPkceSupportPlain() ? "1" : "0");
+        prepStmt.setLong(6, oauthAppDO.getUserAccessTokenExpiryTime());
+        prepStmt.setLong(7, oauthAppDO.getApplicationAccessTokenExpiryTime());
+        prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
+        prepStmt.setLong(9, oauthAppDO.getIdTokenExpiryTime());
+        prepStmt.setString(10, oauthAppDO.getAppOwner().getUserName());
+        prepStmt.setString(11, oauthAppDO.getAppOwner().getUserStoreDomain());
+        prepStmt.setString(12, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+    }
+
+    private void setValuesToStatementWithOwnerUpdateNoPKCE(OAuthAppDO oauthAppDO, PreparedStatement prepStmt) throws SQLException,
+            IdentityOAuth2Exception {
+
+        prepStmt.setLong(4, oauthAppDO.getUserAccessTokenExpiryTime());
+        prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
+        prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
+        prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
+        prepStmt.setString(8, oauthAppDO.getAppOwner().getUserName());
+        prepStmt.setString(9, oauthAppDO.getAppOwner().getUserStoreDomain());
+        prepStmt.setString(10, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+    }
+
+    private void setValuesToStatementWithNoPKCEAndNoOwnerUpdate(OAuthAppDO oauthAppDO, PreparedStatement prepStmt) throws SQLException,
+            IdentityOAuth2Exception {
+
+        prepStmt.setLong(4, oauthAppDO.getUserAccessTokenExpiryTime());
+        prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
+        prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
+        prepStmt.setLong(7, oauthAppDO.getIdTokenExpiryTime());
+        prepStmt.setString(8, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
+    }
+
+    private void setValuesToStatementWithPKCENoOwnerUpdate(OAuthAppDO oauthAppDO, PreparedStatement prepStmt) throws SQLException,
+            IdentityOAuth2Exception {
+
+        prepStmt.setString(4, oauthAppDO.isPkceMandatory() ? "1" : "0");
+        prepStmt.setString(5, oauthAppDO.isPkceSupportPlain() ? "1" : "0");
+        prepStmt.setLong(6, oauthAppDO.getUserAccessTokenExpiryTime());
+        prepStmt.setLong(7, oauthAppDO.getApplicationAccessTokenExpiryTime());
+        prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
+        prepStmt.setLong(9, oauthAppDO.getIdTokenExpiryTime());
+        prepStmt.setString(10, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
     }
 
     private void addOrUpdateOIDCSpProperty(OAuthAppDO oauthAppDO,
@@ -588,6 +680,9 @@ public class OAuthAppDAO {
 
         addOrUpdateOIDCSpProperty(preprocessedClientId, spTenantId, spOIDCProperties, BACK_CHANNEL_LOGOUT_URL,
                 oauthAppDO.getBackChannelLogoutUrl(), prepStatementForPropertyAdd, preparedStatementForPropertyUpdate);
+
+        addOrUpdateOIDCSpProperty(preprocessedClientId, spTenantId, spOIDCProperties, TOKEN_TYPE,
+                oauthAppDO.getTokenType(), prepStatementForPropertyAdd, preparedStatementForPropertyUpdate);
 
         // Execute batched add/update/delete.
         prepStatementForPropertyAdd.executeBatch();
@@ -727,7 +822,7 @@ public class OAuthAppDAO {
         }
     }
 
-    private boolean isDuplicateApplication(String username, int tenantId, String userDomain, OAuthAppDO
+    public boolean isDuplicateApplication(String username, int tenantId, String userDomain, OAuthAppDO
             consumerAppDTO)
             throws IdentityOAuthAdminException {
 
@@ -763,7 +858,7 @@ public class OAuthAppDAO {
         return isDuplicateApp;
     }
 
-    private boolean isDuplicateConsumer(String consumerKey) throws IdentityOAuthAdminException {
+    public boolean isDuplicateConsumer(String consumerKey) throws IdentityOAuthAdminException {
 
         boolean isDuplicateConsumer = false;
 
@@ -861,7 +956,6 @@ public class OAuthAppDAO {
             prepStmt.execute();
         }
     }
-
 
     /**
      * Add scope validators for consumerApp using connection.
@@ -1078,6 +1172,9 @@ public class OAuthAppDAO {
             addToBatchForOIDCPropertyAdd(processedClientId, spTenantId, prepStmtAddOIDCProperty,
                     BACK_CHANNEL_LOGOUT_URL, consumerAppDO.getBackChannelLogoutUrl());
 
+            addToBatchForOIDCPropertyAdd(processedClientId, spTenantId, prepStmtAddOIDCProperty,
+                    TOKEN_TYPE, consumerAppDO.getTokenType());
+
             prepStmtAddOIDCProperty.executeBatch();
         }
     }
@@ -1147,6 +1244,9 @@ public class OAuthAppDAO {
 
         String backChannelLogoutUrl = getFirstPropertyValue(spOIDCProperties, BACK_CHANNEL_LOGOUT_URL);
         oauthApp.setBackChannelLogoutUrl(backChannelLogoutUrl);
+
+        String tokenType = getFirstPropertyValue(spOIDCProperties, TOKEN_TYPE);
+        oauthApp.setTokenType(tokenType);
     }
 
     private String getFirstPropertyValue(Map<String, List<String>> propertyMap, String key) {

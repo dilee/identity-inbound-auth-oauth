@@ -185,6 +185,7 @@ public final class OAuthConstants {
         public static final String AUTH_TIME = "auth_time";
         public static final String ESSENTIAL = "essential";
         public static final String USERINFO = "userinfo";
+        public static final String CLIENT_ID = "client_id";
 
         private OAuth20Params() {
 
@@ -327,6 +328,7 @@ public final class OAuthConstants {
         public static final String ID_TOKEN_ENCRYPTION_ALGORITHM = "idTokenEncryptionAlgorithm";
         public static final String ID_TOKEN_ENCRYPTION_METHOD = "idTokenEncryptionMethod";
         public static final String BACK_CHANNEL_LOGOUT_URL = "backChannelLogoutURL";
+        public static final String TOKEN_TYPE = "tokenType";
 
         private OIDCConfigProperties() { }
     }

@@ -7,6 +7,7 @@ import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.util.reflection.Whitebox;
+import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.Assert;
@@ -29,6 +30,7 @@ import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreManager;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.service.RealmService;
+import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.utils.ConfigurationContextService;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
@@ -43,13 +45,9 @@ import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 
-
 @PowerMockIgnore({"javax.net.*", "javax.security.*", "javax.crypto.*"})
-/*@PrepareForTest({CarbonContext.class, IdentityUtil.class, MultitenantUtils.class, OAuthAppDAO.class,
-                 OAuthAdminService.class, OAuthServerConfiguration.class,
-                 IdentityCoreServiceComponent.class, ConfigurationContextService.class})*/
-@PrepareForTest({OAuthAdminService.class, IdentityCoreServiceComponent.class, ConfigurationContextService.class,
-        OAuthUtil.class})
+@PrepareForTest({OAuthAdminService.class, IdentityCoreServiceComponent.class, ConfigurationContextService.class, OAuthUtil.class,
+        OAuthAppDAO.class})
 public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
 
     private static final String CONSUMER_KEY = "consumer:key";
@@ -69,10 +67,9 @@ public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
     @Mock
     private ConfigurationContext configurationContext;
     @Mock
-    private ConfigurationContextService configurationContextService;
-
-    @Mock
     private AxisConfiguration axisConfiguration;
+    @Mock
+    private TenantManager tenantManager;
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -81,7 +78,9 @@ public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
         System.setProperty("carbon.home",
                 System.getProperty("user.dir") + File.separator + "src" + File.separator + "test"
                         + File.separator + "resources");
-
+        IdentityTenantUtil.setRealmService(realmService);
+        when(realmService.getTenantManager()).thenReturn(tenantManager);
+        when(realmService.getBootstrapRealmConfiguration()).thenReturn(realmConfiguration);
     }
 
     private void initConfigsAndRealm() throws Exception {
@@ -156,18 +155,20 @@ public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
         }
     }
 
-
     @DataProvider(name = "getRegisterOAuthApplicationData")
     public Object[][] getRegisterOAuthApplicationData() {
-        return new Object[][]{{OAuthConstants.OAuthVersions.VERSION_2, "admin"},
-                {OAuthConstants.OAuthVersions.VERSION_2, null},
-                {null, "admin"}
+
+        return new String[][]{{OAuthConstants.OAuthVersions.VERSION_2, "admin", null, null},
+                {OAuthConstants.OAuthVersions.VERSION_2, "admin", CONSUMER_KEY, CONSUMER_SECRET},
+                {OAuthConstants.OAuthVersions.VERSION_2, "admin", CONSUMER_KEY, null},
+                {OAuthConstants.OAuthVersions.VERSION_2, "admin", null, CONSUMER_SECRET},
+                {null, "admin", CONSUMER_KEY, CONSUMER_SECRET}
         };
     }
 
     @Test(dataProvider = "getRegisterOAuthApplicationData")
-    public void testRegisterOAuthApplicationData(String oauthVersion, String userName) throws Exception {
-
+    public void testRegisterOAuthApplicationData(String oauthVersion, String userName, String consumerKey, String
+            consumerSecret) throws Exception {
 
         initConfigsAndRealm();
 
@@ -183,8 +184,8 @@ public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
         oAuthConsumerAppDTO.setApplicationAccessTokenExpiryTime(1234585);
         oAuthConsumerAppDTO.setGrantTypes("");
         oAuthConsumerAppDTO.setUsername(userName);
-        oAuthConsumerAppDTO.setOauthConsumerKey(CONSUMER_KEY);
-        oAuthConsumerAppDTO.setOauthConsumerSecret(CONSUMER_SECRET);
+        oAuthConsumerAppDTO.setOauthConsumerKey(consumerKey);
+        oAuthConsumerAppDTO.setOauthConsumerSecret(consumerSecret);
         oAuthConsumerAppDTO.setOAuthVersion(oauthVersion);
 
         whenNew(OAuthAppDAO.class).withNoArguments().thenReturn(oAtuhAppDAO);
@@ -277,7 +278,6 @@ public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
         oAuthAdminService.getOAuthApplicationData(consumerKey);
     }
 
-
     @Test
     public void testGetOAuthApplicationDataByAppName() throws Exception {
 
@@ -342,6 +342,9 @@ public class OAuthAdminServiceTest extends PowerMockIdentityBaseTest {
         String consumerKey = "some-consumer-key";
 
         OAuthAppDO app = getDummyOAuthApp("some-user-name");
+        OAuthAppDAO oAuthAppDAOMock = PowerMockito.spy(new OAuthAppDAO());
+        OAuthAppDO oAuthAppDO = new OAuthAppDO();
+        PowerMockito.doReturn(true).when(oAuthAppDAOMock, "validateUserForOwnerUpdate", oAuthAppDO);
         when(oAtuhAppDAO.getAppInformation(consumerKey)).thenReturn(app);
         whenNew(OAuthAppDAO.class).withAnyArguments().thenReturn(oAtuhAppDAO);
 

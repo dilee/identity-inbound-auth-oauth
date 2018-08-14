@@ -46,6 +46,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import java.sql.Timestamp;
@@ -65,6 +66,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     public static final int ALLOWED_MINIMUM_VALIDITY_PERIOD = 1000;
     public static final String DEACTIVATED_ACCESS_TOKEN = "DeactivatedAccessToken";
     private static Log log = LogFactory.getLog(RefreshGrantHandler.class);
+    private boolean isHashDisabled = OAuth2Util.isHashDisabled();
 
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
@@ -288,7 +290,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
     private void updateCacheIfEnabled(OAuthTokenReqMessageContext tokReqMsgCtx, AccessTokenDO accessTokenBean,
                                       String clientId, RefreshTokenValidationDataDO oldAccessToken) {
-        if (cacheEnabled) {
+        if (isHashDisabled && cacheEnabled) {
             // Remove old access token from the OAuthCache
             String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
             String authorizedUser = tokReqMsgCtx.getAuthorizedUser().toString();
@@ -425,8 +427,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     private void createTokens(AccessTokenDO accessTokenDO, OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
         try {
-            String accessToken = oauthIssuerImpl.accessToken(tokReqMsgCtx);
-            String refreshToken = oauthIssuerImpl.refreshToken(tokReqMsgCtx);
+            OauthTokenIssuer oauthTokenIssuer = OAuth2Util
+                    .getOAuthTokenIssuerForOAuthApp(accessTokenDO.getConsumerKey());
+            String accessToken = oauthTokenIssuer.accessToken(tokReqMsgCtx);
+            String refreshToken = oauthTokenIssuer.refreshToken(tokReqMsgCtx);
 
             if (log.isDebugEnabled()) {
                 if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
@@ -440,6 +444,9 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             accessTokenDO.setRefreshToken(refreshToken);
         } catch (OAuthSystemException e) {
             throw new IdentityOAuth2Exception("Error when generating the tokens.", e);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving oauth issuer for the app with clientId: " +
+                    accessTokenDO.getConsumerKey(), e);
         }
     }
 

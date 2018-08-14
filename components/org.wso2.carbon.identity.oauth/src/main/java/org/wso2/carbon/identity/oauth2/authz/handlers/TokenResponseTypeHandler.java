@@ -46,6 +46,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
+import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
 
@@ -358,6 +359,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             oauthAuthzMsgCtx.setRefreshTokenIssuedTime(refreshTokenIssuedTime.getTime());
 
             try {
+                OauthTokenIssuer oauthIssuerImpl = OAuth2Util.getOAuthTokenIssuerForOAuthApp(oAuthAppDO);
                 accessToken = oauthIssuerImpl.accessToken(oauthAuthzMsgCtx);
 
                 // regenerate only if refresh token is null
@@ -417,8 +419,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                         " and User Type : " + OAuthConstants.UserType.APPLICATION_USER);
             }
 
-            // Add the access token to the cache.
-            if (cacheEnabled) {
+            // Add the access token to the cache, if cacheEnabled and the hashing oauth key feature turn on.
+            if (isHashDisabled && cacheEnabled) {
                 OAuthCache.getInstance().addToCache(cacheKey, newAccessTokenDO);
                 // Adding AccessTokenDO to improve validation performance
                 OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(accessToken);

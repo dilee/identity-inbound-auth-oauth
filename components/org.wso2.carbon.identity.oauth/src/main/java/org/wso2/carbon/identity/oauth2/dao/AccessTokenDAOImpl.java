@@ -36,10 +36,13 @@ import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2TokenUtil;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
@@ -77,8 +80,10 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
     private static final int DEFAULT_TOKEN_PERSIST_RETRY_COUNT = 5;
     private static final String IDN_OAUTH2_ACCESS_TOKEN = "IDN_OAUTH2_ACCESS_TOKEN";
     private boolean isHashDisabled = OAuth2Util.isHashDisabled();
+    private boolean isTokenCleanupFeatureEnabled=OAuthServerConfiguration.getInstance().isTokenCleanupEnabled();
 
     private Log log = LogFactory.getLog(AccessTokenDAOImpl.class);
+    OldTokensCleanDAO oldTokenCleanupObject = new OldTokensCleanDAO();
 
     @Override
     public void insertAccessToken(String accessToken, String consumerKey, AccessTokenDO accessTokenDO,
@@ -115,18 +120,21 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     "Authorized user should be available for further execution.");
         }
 
-        if (OAuthServerConfiguration.getInstance().usePersistedAccessTokenAlias()) {
-            try {
-                accessToken = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer()
-                        .getAccessTokenHash(accessToken);
-            } catch (OAuthSystemException e) {
-                if (log.isDebugEnabled() &&
-                        IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
-                    log.debug("Error while getting access token hash for token(hashed): " +
-                            DigestUtils.sha256Hex(accessToken));
-                }
-                throw new IdentityOAuth2Exception("Error while getting access token hash.");
+        try {
+            OauthTokenIssuer oauthTokenIssuer = OAuth2Util.getOAuthTokenIssuerForOAuthApp(consumerKey);
+            //check for persist alias for the token type
+            if (oauthTokenIssuer.usePersistedAccessTokenAlias()) {
+                accessToken = oauthTokenIssuer.getAccessTokenHash(accessToken);
             }
+        } catch (OAuthSystemException e) {
+            if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                log.debug("Error while getting access token hash for token(hashed): " + DigestUtils
+                        .sha256Hex(accessToken));
+            }
+            throw new IdentityOAuth2Exception("Error while getting access token hash.");
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception(
+                    "Error while retrieving oauth issuer for the app with clientId: " + consumerKey, e);
         }
 
         if (log.isDebugEnabled()) {
@@ -289,6 +297,10 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                         .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
             }
             insertAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain);
+
+            if (isTokenCleanupFeatureEnabled && existingAccessTokenDO != null) {
+                oldTokenCleanupObject.cleanupTokenByTokenId(existingAccessTokenDO.getTokenId(), connection);
+            }
             connection.commit();
             return true;
         } catch (SQLException e) {
@@ -400,11 +412,15 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     if (isHashDisabled) {
                         accessToken = getPersistenceProcessor().getPreprocessedAccessTokenIdentifier(
                                 resultSet.getString(1));
+                    } else {
+                        accessToken = resultSet.getString(1);
                     }
                     String refreshToken = null;
                     if (resultSet.getString(2) != null) {
                         if (isHashDisabled) {
                             refreshToken = getPersistenceProcessor().getPreprocessedRefreshToken(resultSet.getString(2));
+                        } else {
+                            refreshToken = resultSet.getString(2);
                         }
                     }
                     long issuedTime = resultSet.getTimestamp(3, Calendar.getInstance(TimeZone.getTimeZone(UTC)))
@@ -553,15 +569,19 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             AccessTokenDO accessTokenDO = null;
 
             if (resultSet.next()) {
-                String accessToken = null;
+                String accessToken;
                 if (isHashDisabled) {
                     accessToken = getPersistenceProcessor().getPreprocessedAccessTokenIdentifier(
                             resultSet.getString(1));
+                } else {
+                    accessToken = resultSet.getString(1);
                 }
                 String refreshToken = null;
                 if (resultSet.getString(2) != null) {
                     if (isHashDisabled) {
                         refreshToken = getPersistenceProcessor().getPreprocessedRefreshToken(resultSet.getString(2));
+                    } else {
+                        refreshToken = resultSet.getString(2);
                     }
                 }
                 long issuedTime = resultSet.getTimestamp(3, Calendar.getInstance(TimeZone.getTimeZone("UTC")))
@@ -883,6 +903,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
         PreparedStatement ps = null;
         if (tokens.length > 1) {
             try {
+                List<String> oldTokens = new ArrayList<>();
                 connection.setAutoCommit(false);
                 String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN,
                         accessTokenStoreTable);
@@ -892,12 +913,17 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     ps.setString(2, UUID.randomUUID().toString());
                     ps.setString(3, getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(token));
                     ps.addBatch();
+                    oldTokens.add(getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(token));
                 }
                 ps.executeBatch();
                 connection.commit();
                 // To revoke request objects which have persisted against the access token.
                 OAuth2TokenUtil.postUpdateAccessTokens(Arrays.asList(tokens), OAuthConstants.TokenStates.
                         TOKEN_STATE_REVOKED);
+                if (isTokenCleanupFeatureEnabled) {
+                    oldTokenCleanupObject.cleanupTokensInBatch(oldTokens, connection);
+                }
+                connection.commit();
             } catch (SQLException e) {
                 IdentityDatabaseUtil.rollBack(connection);
                 throw new IdentityOAuth2Exception("Error occurred while revoking Access Tokens : " +
@@ -920,6 +946,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 // To revoke request objects which have persisted against the access token.
                 OAuth2TokenUtil.postUpdateAccessTokens(Arrays.asList(tokens), OAuthConstants.TokenStates.
                         TOKEN_STATE_REVOKED);
+                if (isTokenCleanupFeatureEnabled) {
+                    oldTokenCleanupObject.cleanupTokenByTokenValue(
+                            getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(tokens[0]), connection);
+                }
+
             } catch (SQLException e) {
                 // IdentityDatabaseUtil.rollBack(connection);
                 throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " +
@@ -970,6 +1001,15 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                 OAuth2TokenUtil.postUpdateAccessTokens(accessTokenId, OAuthConstants.TokenStates.
                         TOKEN_STATE_REVOKED);
             }
+
+            if (isTokenCleanupFeatureEnabled) {
+                for (String token : tokens) {
+                    oldTokenCleanupObject.cleanupTokenByTokenValue(
+                            getHashingPersistenceProcessor().getProcessedAccessTokenIdentifier(token), connection);
+                }
+            }
+            connection.commit();
+
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
             throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " +
@@ -1009,6 +1049,12 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             // To revoke the tokens from Request Object table.
             OAuth2TokenUtil.postUpdateAccessToken(tokenId, OAuthConstants.TokenStates.
                     TOKEN_STATE_REVOKED);
+
+            if (isTokenCleanupFeatureEnabled && tokenId != null) {
+                    oldTokenCleanupObject.cleanupTokenByTokenId(tokenId, connection);
+            }
+            connection.commit();
+
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
             throw new IdentityOAuth2Exception("Error occurred while revoking Access Token with ID : " + tokenId, e);
@@ -1274,6 +1320,11 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
 
             // Post refresh access token event
             OAuth2TokenUtil.postRefreshAccessToken(oldAccessTokenId, accessTokenDO.getTokenId(), tokenState);
+
+            if (isTokenCleanupFeatureEnabled && oldAccessTokenId != null) {
+                oldTokenCleanupObject.cleanupTokenByTokenId(oldAccessTokenId, connection);
+            }
+            connection.commit();
         } catch (SQLException e) {
             String errorMsg = "Error while regenerating access token";
             throw new IdentityOAuth2Exception(errorMsg, e);
